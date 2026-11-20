@@ -17,7 +17,7 @@ Daily Missions: a planner for your whole day that runs fully offline on your pho
 - **Reorder by dragging** the grip on the right, or press and hold a task. Order never changes a task's time. To change a time, tap the time.
 - **Repeating tasks:** when you change or remove one, choose "only this day" or "this day and later". Earlier days always keep what they had.
 - **Week view** with seven columns, and **Month view** to look back at any day, see streaks, and open weekly records.
-- **Light, dark, or auto** theme, and a 12 or 24-hour clock.
+- **Light, dark, or auto** theme, and a 12 or 24-hour clock. Light mode uses soft greys instead of bright white, and your theme is applied before the app first draws, so there is no flash on launch.
 
 | Tier | Result | Title |
 | --- | --- | --- |
@@ -44,7 +44,7 @@ Everything is saved on the device as compact JSON (about 100 bytes per day). In 
 - whether days past a limit keep a tiny score ("9/13") or are deleted,
 - whether it asks before archiving.
 
-**Tools > Backups** has Export backup (.json), Restore backup, and Save HTML copy. **Weekly records** download or print a readable week, laid out like the printed schedule. Restore also reads backups from the older Morning Missions tracker.
+**Tools > Backups** has Export backup (.json), Restore backup, and Save HTML copy. **Weekly records** download or print a readable week, laid out like the printed schedule. On screen they match your theme (and a downloaded record follows the viewer's light or dark setting); printing is always on white. Restore also reads backups from the older Morning Missions tracker.
 
 ## Installing on Android
 

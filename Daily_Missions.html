@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#182331">
 <meta name="color-scheme" content="light dark">
+<script id="theme-boot">try{var t=localStorage.getItem("mm-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <title>Daily Missions</title>
 <meta name="description" content="A daily planner that runs fully offline on your phone. Reorder tasks, set times and repeat days, and look back by week or month.">
 <style>
-:root{--bg:#e8edf3;--tile:#2633440f;--lit:#f5a3242b;--lit-line:#e58b1366;--blue:#28bad41f;--blue-line:#1b9db866;--surface:#fff;--surface-2:#f4f7fa;--surface-3:#e5ebf1;--ink:#1f2b3a;--muted:#536477;--line:#d8e0e9;--line-strong:#9fafc0;--head:#243244;--head-ink:#fff;--head-muted:#b9c6d4;--chrome:#182331;--accent:#ffac32;--accent-strong:#d9820f;--accent-ink:#955200;--on-accent:#182331;--done:#fff3dc;--warn-bg:#fff1d6;--warn-line:#e7c687;--danger:#b3261e;--danger-bg:#fdecec;--focus:#0a84c6;--shadow:0 8px 30px #1b28381a;color-scheme:light}
+:root{--bg:#d3d9e1;--tile:#26334414;--lit:#f5a3242b;--lit-line:#e58b1366;--blue:#28bad41f;--blue-line:#1b9db866;--surface:#e8ecf0;--surface-2:#e0e5eb;--surface-3:#d0d7e0;--ink:#1f2b3a;--muted:#4b5b6d;--line:#c6cfda;--line-strong:#93a2b4;--head:#243244;--head-ink:#fff;--head-muted:#b9c6d4;--chrome:#182331;--accent:#ffac32;--accent-strong:#d9820f;--accent-ink:#8a4b00;--on-accent:#182331;--done:#f1e2c2;--warn-bg:#f0e2c2;--warn-line:#d6b673;--danger:#a8231c;--danger-bg:#f1d9d9;--focus:#0a7bb8;--shadow:0 8px 28px #1b283814;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111a25;--tile:#ffffff0f;--lit:#ef9b2033;--lit-line:#f6ae4d80;--blue:#28bad42c;--blue-line:#6cddf378;--surface:#1a2534;--surface-2:#1f2b3b;--surface-3:#2a3749;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--line-strong:#50627a;--head:#0f1824;--head-ink:#fff;--head-muted:#a8b6c7;--accent-strong:#ffac32;--accent-ink:#ffbd5c;--done:#352b19;--warn-bg:#3a2e17;--warn-line:#7a5a26;--danger:#ff9a90;--danger-bg:#3b1e1e;--focus:#6cddf3;--shadow:0 8px 30px #0005;color-scheme:dark}}
 :root[data-theme=dark]{--bg:#111a25;--tile:#ffffff0f;--lit:#ef9b2033;--lit-line:#f6ae4d80;--blue:#28bad42c;--blue-line:#6cddf378;--surface:#1a2534;--surface-2:#1f2b3b;--surface-3:#2a3749;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--line-strong:#50627a;--head:#0f1824;--head-ink:#fff;--head-muted:#a8b6c7;--accent-strong:#ffac32;--accent-ink:#ffbd5c;--done:#352b19;--warn-bg:#3a2e17;--warn-line:#7a5a26;--danger:#ff9a90;--danger-bg:#3b1e1e;--focus:#6cddf3;--shadow:0 8px 30px #0005;color-scheme:dark}
 *{box-sizing:border-box}
@@ -222,7 +223,7 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
 .error{color:var(--danger);font-weight:700;margin:10px 0 0;min-height:1px}
 .scope-btns{display:flex;flex-direction:column;gap:8px}
 .scope-btns .btn{width:100%;justify-content:flex-start;text-align:left}
-#rec-frame{width:100%;height:62vh;border:1px solid var(--line);border-radius:8px;background:#fff}
+#rec-frame{width:100%;height:62vh;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;width:max-content;max-width:min(92vw,520px);padding:10px 10px 10px 16px;background:#101e2f;color:#fff;border-left:4px solid var(--accent);border-radius:10px;box-shadow:0 10px 30px #0006;font-size:.92rem;line-height:1.4}
 .toast button{color:var(--accent);font-weight:800;min-height:40px;padding:0 10px;border-radius:6px;flex:none}
 @media (max-width:720px){
@@ -380,7 +381,8 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
 'use strict';
 var docEl=document.documentElement;
 var cleanRoot=docEl.cloneNode(true);
-cleanRoot.querySelectorAll('script:not(#initial-state):not(#app)').forEach(function(n){n.remove();});
+cleanRoot.querySelectorAll('script:not(#initial-state):not(#app):not(#theme-boot)').forEach(function(n){n.remove();});
+cleanRoot.removeAttribute('data-theme');
 var ORIGINAL='<!doctype html>\n'+cleanRoot.outerHTML;
 docEl.classList.remove('no-js');
 
@@ -713,8 +715,10 @@ function fmtDur(m){const h=Math.floor(m/60),n=m%60;return h?(h+' h'+(n?' '+n+' m
 function rank(p,total){if(!total)return 'Rest day';return p===100?'Day powered up':p>=75?'Home stretch':p>=50?'Momentum unlocked':p>=25?'Finding your rhythm':p>0?'On the board':'Ready to begin';}
 
 /* ---------- rendering ---------- */
+const darkNow=()=>state.set.theme==='dark'||(state.set.theme==='auto'&&!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches));
 function applyTheme(){
  const t=state.set.theme;if(t==='auto')delete docEl.dataset.theme;else docEl.dataset.theme=t;
+ lsSet('mm-theme',t);
  const b=$('theme-btn');b.innerHTML=I[t];b.setAttribute('aria-label','Theme: '+t+'. Tap to change.');b.title='Theme: '+t;
 }
 function buildBackdrop(){let h='';for(let r=0;r<13;r++)for(let c=0;c<13;c++){const x=c*105+(r%2)*52,y=r*83,pts=[0,1,2,3,4,5].map(i=>{const a=(i*60+30)*Math.PI/180;return (x+56*Math.cos(a)).toFixed(1)+','+(y+56*Math.sin(a)).toFixed(1);}).join(' ');h+='<polygon class="tile" points="'+pts+'"/>';}$('backdrop').innerHTML=h;}
@@ -1146,7 +1150,8 @@ $('win').addEventListener('close',()=>{stopWin();renderFinish();});
 $('win-stage').addEventListener('scroll',()=>{if($('win').open)placeDeco();},{passive:true});
 window.addEventListener('resize',()=>{if($('win').open)placeDeco();});
 /* ---------- records and files ---------- */
-function reportHTML(ws){
+// mode 'dark' or 'light' pins the on-screen colors (app preview); without it the file follows the viewer's setting. Printing is always light.
+function reportHTML(ws,mode){
  const rows=new Map(),heads=[];
  for(let i=0;i<7;i++){
   const d=addDays(ws,i),s=stats(d);heads.push(s);
@@ -1157,14 +1162,14 @@ function reportHTML(ws){
  const th=SHORT.map((n,i)=>'<th class="c">'+n+'<br><small>'+parse(addDays(ws,i)).getDate()+'</small></th>').join('');
  const body=list.length?list.map((r,k)=>'<tr'+(k%2?' class="alt"':'')+'><td class="time">'+esc(fmtRange(r.s,r.e))+'</td><td>'+esc(r.t)+'</td>'+r.cells.map(c=>'<td class="c">'+(c===1?'<span class="yes">&#10003;</span>':c===0?'<span class="no">&#9633;</span>':'')+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="9">Nothing scheduled this week.</td></tr>';
  const foot='<tr class="tot"><td colspan="2">Done</td>'+heads.map(s=>'<td class="c">'+(s.pre||(s.arch&&s.none)?'':s.total?s.done+'/'+s.total:'Rest')+'</td>').join('')+'</tr>';
- return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Daily Missions record '+ws+'</title><style>body{font:14px/1.45 system-ui,sans-serif;color:#1f2b3a;background:#fff;margin:24px auto;max-width:960px;padding:0 16px}.tag{display:inline-block;background:#ffac32;color:#182331;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 16px 4px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}h1{font-size:34px;font-style:italic;font-weight:900;margin:8px 0 2px;letter-spacing:-.02em;text-transform:uppercase}.sub{color:#536477;margin:0 0 14px}.rule{height:4px;background:linear-gradient(90deg,#ffac32 40%,#d8e0e9 40%);margin:0 0 18px}.sum{font-weight:800;margin:0 0 14px}table{width:100%;border-collapse:collapse}th{background:#243244;color:#fff;text-align:left;padding:8px;font-size:12px;letter-spacing:.04em}th small{font-weight:600;color:#b9c6d4}td{padding:7px 8px;border-bottom:1px solid #d8e0e9;vertical-align:top}tr.alt td{background:#f4f7fa}.c{text-align:center;width:44px}.time{white-space:nowrap;font-weight:700;color:#536477;width:120px;font-variant-numeric:tabular-nums}.yes{color:#c57400;font-weight:900;font-size:16px}.no{color:#9fafc0;font-size:16px}tr.tot td{font-weight:800;background:#fff3dc}h2{font-size:15px;font-style:italic;text-transform:uppercase;margin:22px 0 8px}.notes{white-space:pre-wrap;background:#f4f7fa;padding:12px;border-radius:6px;margin:0}footer{margin-top:20px;color:#7a8898;font-size:11px}@media print{body{margin:0;font-size:10px}h1{font-size:24px}td,th{padding:4px}tr{break-inside:avoid}thead{display:table-header-group}}</style></head><body>'
+ return '<!doctype html><html lang="en"'+(mode?' data-theme="'+mode+'"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>Daily Missions record '+ws+'</title><style>:root{color-scheme:light;--bg:#e8ecf0;--ink:#1f2b3a;--muted:#4b5b6d;--line:#c6cfda;--alt:#dfe4ea;--head:#243244;--hm:#b9c6d4;--tot:#f1e1bf;--yes:#9a5800;--no:#8494a6;--foot:#5d6d80;--notes:#dfe4ea}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}}:root[data-theme=dark]{color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}@media print{:root:root:root{color-scheme:light;--bg:#fff;--ink:#1f2b3a;--muted:#536477;--line:#d8e0e9;--alt:#f4f7fa;--head:#243244;--hm:#b9c6d4;--tot:#fff3dc;--yes:#c57400;--no:#9fafc0;--foot:#7a8898;--notes:#f4f7fa}}html{background:var(--bg)}body{font:14px/1.45 system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:24px auto;max-width:960px;padding:0 16px}.tag{display:inline-block;background:#ffac32;color:#182331;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 16px 4px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}h1{font-size:34px;font-style:italic;font-weight:900;margin:8px 0 2px;letter-spacing:-.02em;text-transform:uppercase}.sub{color:var(--muted);margin:0 0 14px}.rule{height:4px;background:linear-gradient(90deg,#ffac32 40%,var(--line) 40%);margin:0 0 18px}.sum{font-weight:800;margin:0 0 14px}table{width:100%;border-collapse:collapse}th{background:var(--head);color:#fff;text-align:left;padding:8px;font-size:12px;letter-spacing:.04em}th small{font-weight:600;color:var(--hm)}td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.alt td{background:var(--alt)}.c{text-align:center;width:44px}.time{white-space:nowrap;font-weight:700;color:var(--muted);width:120px;font-variant-numeric:tabular-nums}.yes{color:var(--yes);font-weight:900;font-size:16px}.no{color:var(--no);font-size:16px}tr.tot td{font-weight:800;background:var(--tot)}h2{font-size:15px;font-style:italic;text-transform:uppercase;margin:22px 0 8px}.notes{white-space:pre-wrap;background:var(--notes);padding:12px;border-radius:6px;margin:0}footer{margin-top:20px;color:var(--foot);font-size:11px}@media print{body{margin:0;font-size:10px}h1{font-size:24px}td,th{padding:4px}tr{break-inside:avoid}thead{display:table-header-group}}</style></head><body>'
  +'<span class="tag">WEEKLY RECORD</span><h1>Daily Missions</h1><p class="sub">'+esc(state.name||'Your week')+' · '+esc(weekRange(ws))+'</p><div class="rule"></div>'
  +'<p class="sum">'+w.done+' of '+w.total+' objectives done ('+pct(w)+'%)</p>'
  +'<table><thead><tr><th>Time</th><th>Objective</th>'+th+'</tr></thead><tbody>'+body+foot+'</tbody></table>'
  +'<h2>Week notes</h2><p class="notes">'+esc(notes||'No notes for this week.')+'</p><footer>Generated '+esc(new Date().toLocaleString())+'. One objective at a time.</footer></body></html>';
 }
 let recWeek=null;
-function viewRecord(ws){recWeek=ws;$('rec-title').textContent='Week of '+fmtD(ws,{month:'short',day:'numeric'});$('rec-frame').srcdoc=reportHTML(ws);$('record-dialog').showModal();}
+function viewRecord(ws){recWeek=ws;$('rec-title').textContent='Week of '+fmtD(ws,{month:'short',day:'numeric'});$('rec-frame').srcdoc=reportHTML(ws,darkNow()?'dark':'light');$('record-dialog').showModal();}
 function downloadRecord(ws){saveFile('Daily_Missions_Week_'+ws+'.html','text/html',reportHTML(ws));}
 function printRecord(ws){
  const html=reportHTML(ws);

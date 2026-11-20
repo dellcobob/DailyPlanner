@@ -253,7 +253,7 @@ async function test(name, fn) {
     const bg = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
     assert.equal(await bg(), 'rgb(17, 26, 37)', 'auto follows the system dark setting');
     await p.click('#theme-btn'); assert.equal(await p.getAttribute('html', 'data-theme'), 'light');
-    assert.equal(await bg(), 'rgb(232, 237, 243)');
+    assert.equal(await bg(), 'rgb(211, 217, 225)');
     await p.click('#theme-btn'); assert.equal(await p.getAttribute('html', 'data-theme'), 'dark');
     await p.click('#theme-btn'); assert.equal(await p.getAttribute('html', 'data-theme'), null);
     await tab(p, 'tools'); await p.check('input[name=clock][value="24"]');
@@ -363,6 +363,10 @@ async function test(name, fn) {
     const c2 = await open({ url: 'file://' + file });
     const st = await S(c2.p);
     assert.equal(st.name, 'Copy Owner'); assert.ok(st.pid);
+    const html = fs.readFileSync(file, 'utf8');
+    assert.ok(html.includes('id="theme-boot"'), 'copy keeps the early theme loader');
+    const htmlTag = html.slice(html.indexOf('<html'), html.indexOf('>', html.indexOf('<html')) + 1);
+    assert.ok(!/data-theme/.test(htmlTag), 'copy does not freeze the theme: ' + htmlTag);
     assert.ok(await c2.p.evaluate(() => Object.keys(localStorage).some(k => /^morning-missions-v3-/.test(k))));
     await c2.ctx.close();
   });
@@ -539,6 +543,68 @@ async function test(name, fn) {
     assert.equal(await p.locator('#day-hero [data-finish]').count(), 0);
     await goto(p, '2026-11-21'); assert.equal(await p.isVisible('#finish-day'), false, 'not for rest days');
     await goto(p, '2026-11-19'); assert.equal(await p.isVisible('#finish-day'), true, 'past days can be finished');
+    await ctx.close();
+  });
+
+  await test('light mode uses soft greys instead of white', async () => {
+    const { ctx, p } = await open({ scheme: 'light' });
+    const bgOf = sel => p.evaluate(s => getComputedStyle(document.querySelector(s)).backgroundColor, sel);
+    assert.equal(await bgOf('body'), 'rgb(211, 217, 225)');
+    assert.equal(await bgOf('#day-hero'), 'rgb(232, 236, 240)');
+    assert.equal(await bgOf('#day-list .task'), 'rgb(232, 236, 240)');
+    assert.equal(await bgOf('#day-list .task:nth-child(2)'), 'rgb(224, 229, 235)');
+    await p.click('#add-row');
+    assert.equal(await bgOf('#task-sheet'), 'rgb(232, 236, 240)');
+    await ctx.close();
+  });
+
+  await test('weekly record preview follows the theme, no white flash in dark mode', async () => {
+    for (const [scheme, want] of [['dark', 'rgb(17, 26, 37)'], ['light', 'rgb(232, 236, 240)']]) {
+      const { ctx, p } = await open({ scheme });
+      await tab(p, 'week'); await p.click('[data-record="2026-11-16"]');
+      await p.waitForSelector('#record-dialog[open]');
+      assert.notEqual(await p.evaluate(() => getComputedStyle(document.getElementById('rec-frame')).backgroundColor), 'rgb(255, 255, 255)');
+      const f = p.frameLocator('#rec-frame');
+      await f.locator('table').waitFor();
+      const got = await f.locator('body').evaluate(b => [getComputedStyle(b).backgroundColor, document.documentElement.dataset.theme]);
+      assert.deepEqual(got, [want, scheme], scheme + ' preview');
+      await ctx.close();
+    }
+    const { ctx, p } = await open({ scheme: 'light' });
+    await p.click('#theme-btn'); await p.click('#theme-btn');
+    await tab(p, 'week'); await p.click('[data-record="2026-11-16"]');
+    const f = p.frameLocator('#rec-frame'); await f.locator('table').waitFor();
+    assert.equal(await f.locator('body').evaluate(b => getComputedStyle(b).backgroundColor), 'rgb(17, 26, 37)', 'manual dark theme wins over a light system');
+    await ctx.close();
+  });
+
+  await test('downloaded record adapts to the viewer and always prints white', async () => {
+    const { ctx, p } = await open();
+    await tab(p, 'week'); await p.click('[data-record="2026-11-16"]');
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#rec-download')]);
+    const file = path.join(TMP, 'record.html'); await dl.saveAs(file);
+    await ctx.close();
+    const html = fs.readFileSync(file, 'utf8');
+    assert.ok(!/<html[^>]*data-theme/.test(html), 'downloaded file is not pinned to a theme');
+    const ctx2 = await browser.newContext({ colorScheme: 'dark' });
+    const q = await ctx2.newPage(); await q.goto('file://' + file);
+    const bg = () => q.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    assert.equal(await bg(), 'rgb(17, 26, 37)', 'dark on a dark phone');
+    await q.emulateMedia({ media: 'print' });
+    assert.equal(await bg(), 'rgb(255, 255, 255)', 'prints on white');
+    await ctx2.close();
+  });
+
+  await test('a saved dark theme applies before the page first draws', async () => {
+    const { ctx, p } = await open({ scheme: 'light' });
+    await p.click('#theme-btn'); await p.click('#theme-btn');
+    assert.equal(await p.getAttribute('html', 'data-theme'), 'dark');
+    await ctx.addInitScript(() => {
+      new MutationObserver((m, o) => { if (document.body) { window.__themeAtBody = document.documentElement.getAttribute('data-theme'); o.disconnect(); } })
+        .observe(document, { childList: true, subtree: true });
+    });
+    await p.reload(); await p.waitForSelector('#day-list .task');
+    assert.equal(await p.evaluate(() => window.__themeAtBody), 'dark');
     await ctx.close();
   });
 
