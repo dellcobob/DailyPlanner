@@ -1,0 +1,520 @@
+{
+ "schema": 2,
+ "name": "Test Player",
+ "template": [
+  {
+   "id": "mwf",
+   "name": "Mon / Wed / Fri",
+   "days": [
+    0,
+    2,
+    4
+   ],
+   "tasks": [
+    {
+     "id": "a0",
+     "time": "06:00",
+     "label": "Water, pray, laundry"
+    },
+    {
+     "id": "a1",
+     "time": "06:15",
+     "label": "Yoga"
+    },
+    {
+     "id": "a2",
+     "time": "06:35",
+     "label": "Meditation"
+    },
+    {
+     "id": "a3",
+     "time": "06:50",
+     "label": "Shower"
+    },
+    {
+     "id": "a4",
+     "time": "07:00",
+     "label": "Flip laundry"
+    },
+    {
+     "id": "a5",
+     "time": "07:10",
+     "label": "Plan for the day"
+    },
+    {
+     "id": "a6",
+     "time": "07:20",
+     "label": "Meds & breakfast"
+    },
+    {
+     "id": "a7",
+     "time": "07:45",
+     "label": "Coffee"
+    },
+    {
+     "id": "a8",
+     "time": "08:00",
+     "label": "Journal & get laundry"
+    },
+    {
+     "id": "a9",
+     "time": "08:20",
+     "label": "Study"
+    },
+    {
+     "id": "a10",
+     "time": "09:20",
+     "label": "Walk down"
+    },
+    {
+     "id": "a11",
+     "time": "09:35",
+     "label": "Call family"
+    },
+    {
+     "id": "a12",
+     "time": "10:00",
+     "label": "Group"
+    }
+   ]
+  },
+  {
+   "id": "tth",
+   "name": "Tue / Thu",
+   "days": [
+    1,
+    3
+   ],
+   "tasks": [
+    {
+     "id": "b0",
+     "time": "06:00",
+     "label": "Water, pray, workout"
+    },
+    {
+     "id": "b1",
+     "time": "06:15",
+     "label": "Workout"
+    },
+    {
+     "id": "b2",
+     "time": "06:35",
+     "label": "Yoga & meditation"
+    },
+    {
+     "id": "b3",
+     "time": "06:50",
+     "label": "Shower"
+    },
+    {
+     "id": "b4",
+     "time": "07:00",
+     "label": "Cool down"
+    },
+    {
+     "id": "b5",
+     "time": "07:10",
+     "label": "Plan for the day"
+    },
+    {
+     "id": "b6",
+     "time": "07:20",
+     "label": "Meds & breakfast"
+    },
+    {
+     "id": "b7",
+     "time": "07:45",
+     "label": "Coffee"
+    },
+    {
+     "id": "b8",
+     "time": "08:00",
+     "label": "Journal"
+    },
+    {
+     "id": "b9",
+     "time": "08:20",
+     "label": "Study"
+    },
+    {
+     "id": "b10",
+     "time": "09:20",
+     "label": "Walk down"
+    },
+    {
+     "id": "b11",
+     "time": "09:35",
+     "label": "Call family"
+    },
+    {
+     "id": "b12",
+     "time": "10:00",
+     "label": "Group"
+    }
+   ]
+  },
+  {
+   "id": "weekend",
+   "name": "Weekend",
+   "days": [
+    5,
+    6
+   ],
+   "tasks": []
+  }
+ ],
+ "weeks": {
+  "2026-11-16": {
+   "start": "2026-11-16",
+   "groups": [
+    {
+     "id": "mwf",
+     "name": "Mon / Wed / Fri",
+     "days": [
+      0,
+      2,
+      4
+     ],
+     "tasks": [
+      {
+       "id": "a0",
+       "time": "06:00",
+       "label": "Water, pray, laundry"
+      },
+      {
+       "id": "a1",
+       "time": "06:15",
+       "label": "Yoga"
+      },
+      {
+       "id": "a2",
+       "time": "06:35",
+       "label": "Meditation"
+      },
+      {
+       "id": "a3",
+       "time": "06:50",
+       "label": "Shower"
+      },
+      {
+       "id": "a4",
+       "time": "07:00",
+       "label": "Flip laundry"
+      },
+      {
+       "id": "a5",
+       "time": "07:10",
+       "label": "Plan for the day"
+      },
+      {
+       "id": "a6",
+       "time": "07:20",
+       "label": "Meds & breakfast"
+      },
+      {
+       "id": "a7",
+       "time": "07:45",
+       "label": "Coffee"
+      },
+      {
+       "id": "a8",
+       "time": "08:00",
+       "label": "Journal & get laundry"
+      },
+      {
+       "id": "a9",
+       "time": "08:20",
+       "label": "Study"
+      },
+      {
+       "id": "a10",
+       "time": "09:20",
+       "label": "Walk down"
+      },
+      {
+       "id": "a11",
+       "time": "09:35",
+       "label": "Call family"
+      },
+      {
+       "id": "a12",
+       "time": "10:00",
+       "label": "Group"
+      }
+     ]
+    },
+    {
+     "id": "tth",
+     "name": "Tue / Thu",
+     "days": [
+      1,
+      3
+     ],
+     "tasks": [
+      {
+       "id": "b0",
+       "time": "06:00",
+       "label": "Water, pray, workout"
+      },
+      {
+       "id": "b1",
+       "time": "06:15",
+       "label": "Workout"
+      },
+      {
+       "id": "b2",
+       "time": "06:35",
+       "label": "Yoga & meditation"
+      },
+      {
+       "id": "b3",
+       "time": "06:50",
+       "label": "Shower"
+      },
+      {
+       "id": "b4",
+       "time": "07:00",
+       "label": "Cool down"
+      },
+      {
+       "id": "b5",
+       "time": "07:10",
+       "label": "Plan for the day"
+      },
+      {
+       "id": "b6",
+       "time": "07:20",
+       "label": "Meds & breakfast"
+      },
+      {
+       "id": "b7",
+       "time": "07:45",
+       "label": "Coffee"
+      },
+      {
+       "id": "b8",
+       "time": "08:00",
+       "label": "Journal"
+      },
+      {
+       "id": "b9",
+       "time": "08:20",
+       "label": "Study"
+      },
+      {
+       "id": "b10",
+       "time": "09:20",
+       "label": "Walk down"
+      },
+      {
+       "id": "b11",
+       "time": "09:35",
+       "label": "Call family"
+      },
+      {
+       "id": "b12",
+       "time": "10:00",
+       "label": "Group"
+      }
+     ]
+    },
+    {
+     "id": "weekend",
+     "name": "Weekend",
+     "days": [
+      5,
+      6
+     ],
+     "tasks": []
+    }
+   ],
+   "checks": {
+    "0:a0": true,
+    "0:a1": true,
+    "1:b0": true,
+    "4:a2": true,
+    "3:b12": true
+   },
+   "notes": "Old notes line",
+   "player": "Test Player",
+   "completedAt": null,
+   "updatedAt": "2026-11-20T09:05:00.362Z"
+  },
+  "2026-11-09": {
+   "start": "2026-11-09",
+   "groups": [
+    {
+     "id": "mwf",
+     "name": "Mon / Wed / Fri",
+     "days": [
+      0,
+      2,
+      4
+     ],
+     "tasks": [
+      {
+       "id": "a0",
+       "time": "06:00",
+       "label": "Water, pray, laundry"
+      },
+      {
+       "id": "a1",
+       "time": "06:15",
+       "label": "Yoga"
+      },
+      {
+       "id": "a2",
+       "time": "06:35",
+       "label": "Meditation"
+      },
+      {
+       "id": "a3",
+       "time": "06:50",
+       "label": "Shower"
+      },
+      {
+       "id": "a4",
+       "time": "07:00",
+       "label": "Flip laundry"
+      },
+      {
+       "id": "a5",
+       "time": "07:10",
+       "label": "Plan for the day"
+      },
+      {
+       "id": "a6",
+       "time": "07:20",
+       "label": "Meds & breakfast"
+      },
+      {
+       "id": "a7",
+       "time": "07:45",
+       "label": "Coffee"
+      },
+      {
+       "id": "a8",
+       "time": "08:00",
+       "label": "Journal & get laundry"
+      },
+      {
+       "id": "a9",
+       "time": "08:20",
+       "label": "Study"
+      },
+      {
+       "id": "a10",
+       "time": "09:20",
+       "label": "Walk down"
+      },
+      {
+       "id": "a11",
+       "time": "09:35",
+       "label": "Call family"
+      },
+      {
+       "id": "a12",
+       "time": "10:00",
+       "label": "Group"
+      }
+     ]
+    },
+    {
+     "id": "tth",
+     "name": "Tue / Thu",
+     "days": [
+      1,
+      3
+     ],
+     "tasks": [
+      {
+       "id": "b0",
+       "time": "06:00",
+       "label": "Water, pray, workout"
+      },
+      {
+       "id": "b1",
+       "time": "06:15",
+       "label": "Workout"
+      },
+      {
+       "id": "b2",
+       "time": "06:35",
+       "label": "Yoga & meditation"
+      },
+      {
+       "id": "b3",
+       "time": "06:50",
+       "label": "Shower"
+      },
+      {
+       "id": "b4",
+       "time": "07:00",
+       "label": "Cool down"
+      },
+      {
+       "id": "b5",
+       "time": "07:10",
+       "label": "Plan for the day"
+      },
+      {
+       "id": "b6",
+       "time": "07:20",
+       "label": "Meds & breakfast"
+      },
+      {
+       "id": "b7",
+       "time": "07:45",
+       "label": "Coffee"
+      },
+      {
+       "id": "b8",
+       "time": "08:00",
+       "label": "Journal"
+      },
+      {
+       "id": "b9",
+       "time": "08:20",
+       "label": "Study"
+      },
+      {
+       "id": "b10",
+       "time": "09:20",
+       "label": "Walk down"
+      },
+      {
+       "id": "b11",
+       "time": "09:35",
+       "label": "Call family"
+      },
+      {
+       "id": "b12",
+       "time": "10:00",
+       "label": "Group"
+      }
+     ]
+    },
+    {
+     "id": "weekend",
+     "name": "Weekend",
+     "days": [
+      5,
+      6
+     ],
+     "tasks": []
+    }
+   ],
+   "checks": {
+    "2:a5": true
+   },
+   "notes": "",
+   "player": "Test Player",
+   "completedAt": null,
+   "updatedAt": "2026-11-20T09:05:00.535Z"
+  }
+ },
+ "active": "2026-11-09",
+ "view": "grouped",
+ "selectedDay": 4,
+ "updatedAt": "2026-11-20T09:05:00.535Z"
+}
