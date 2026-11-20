@@ -1,4 +1,4 @@
-// End-to-end checks for Morning_Missions_Tracker.html.
+// End-to-end checks for Daily_Missions.html.
 // Run: node tests/planner.test.js   (needs the `playwright` package and Chromium)
 'use strict';
 const assert = require('node:assert/strict');
@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
 
-const FILE = path.resolve(__dirname, '..', 'Morning_Missions_Tracker.html');
+const FILE = path.resolve(__dirname, '..', 'Daily_Missions.html');
 const URL = 'file://' + FILE;
 const OLD_BACKUP = path.join(__dirname, 'fixtures', 'old-tracker-backup.json');
 const NOW = new Date('2026-11-20T09:05:00'); // a Friday
@@ -63,11 +63,13 @@ async function test(name, fn) {
 
 (async () => {
   browser = await chromium.launch();
-  console.log('Morning Missions planner tests');
+  console.log('Daily Missions planner tests');
 
   await test('opens on today in the one-day view with the starter routine', async () => {
     const { ctx, p } = await open();
     assert.equal(await p.textContent('#day-hero h1'), 'Friday');
+    assert.equal(await p.title(), 'Daily Missions');
+    assert.equal(await p.textContent('.brand span'), 'DAILY MISSIONS');
     assert.equal((await titles(p)).length, 13);
     assert.equal(await p.isVisible('#view-week'), false);
     assert.match(await p.textContent('#day-hero .date'), /Today/);
@@ -375,7 +377,7 @@ async function test(name, fn) {
     assert.match(await f.locator('.sum').textContent(), /1 of \d+ objectives/);
     await p.click('#rec-download');
     const saved = await p.evaluate(() => window.__saved);
-    assert.equal(saved[0], 'Morning_Missions_Week_2026-11-16.html');
+    assert.equal(saved[0], 'Daily_Missions_Week_2026-11-16.html');
     await p.click('#rec-print'); assert.ok(await p.evaluate(() => window.__printed > 1000));
     await ctx.close();
   });
@@ -422,6 +424,121 @@ async function test(name, fn) {
     await p.click('#ts-suggest li:has-text("Yoga & meditation")');
     assert.equal(await p.inputValue('#ts-name'), 'Yoga & meditation');
     assert.equal(await p.inputValue('#ts-start'), '06:15', 'editing keeps the time');
+    await ctx.close();
+  });
+
+  await test('finish day: each 10% bracket maps to its own tier and emblem', async () => {
+    const { ctx, p } = await open();
+    const r = await p.evaluate(() => {
+      const M = window.MM;
+      const ks = [[0, 13], [1, 13], [2, 13], [3, 13], [5, 13], [7, 13], [8, 13], [10, 13], [11, 13], [12, 13], [13, 13], [249, 250], [1, 10], [10, 100], [99, 100]].map(([d, t]) => M.tierOf(d, t));
+      return { ks, svgs: M.TIERS.map((_, k) => M.emblemSVG(k)), names: M.TIERS.map(t => t.n) };
+    });
+    assert.deepEqual(r.ks.map(x => x.k), [0, 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 9, 1, 1, 9]);
+    assert.deepEqual(r.ks.map(x => x.p), [0, 8, 15, 23, 38, 54, 62, 77, 85, 92, 100, 99, 10, 10, 99]);
+    assert.equal(r.svgs.length, 11);
+    assert.equal(new Set(r.svgs).size, 11, 'every tier has a different emblem');
+    assert.equal(new Set(r.names).size, 11);
+    await ctx.close();
+  });
+
+  await test('finish day plays the tier, can be skipped, replayed, and closed', async () => {
+    const { ctx, p } = await open();
+    for (let i = 0; i < 7; i++) await p.locator('#day-list .task input').nth(i).check();
+    assert.equal(await p.textContent('#finish-day .fb-main'), 'Finish day');
+    await p.click('#finish-day');
+    await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-name'), 'Vanguard');
+    assert.equal(await p.textContent('#win-tag'), 'Mission tier 6');
+    assert.match(await p.textContent('#win-sub'), /7 of 13 objectives/);
+    assert.equal(await p.isVisible('#win-skip'), true);
+    await p.waitForTimeout(900);
+    assert.ok(await p.evaluate(() => window.MM.fxCount() > 0), 'sparks are flying');
+    await p.click('#win-stage', { position: { x: 20, y: 20 } });
+    assert.equal(await p.textContent('#win-pct'), '54%');
+    assert.equal(await p.evaluate(() => getComputedStyle(document.getElementById('win-actions')).opacity), '1');
+    assert.equal(await p.isVisible('#win-skip'), false);
+    await p.click('#win-replay');
+    assert.equal(await p.isVisible('#win-skip'), true, 'replay starts again');
+    await p.waitForTimeout(3800);
+    assert.equal(await p.textContent('#win-pct'), '54%', 'plays through to the end on its own');
+    await p.click('#win-close');
+    assert.equal(await p.isVisible('#win'), false);
+    assert.equal((await S(p)).days['2026-11-20'].f, 1);
+    assert.equal(await p.textContent('#finish-day .fb-main'), 'Replay result');
+    assert.match(await p.textContent('#finish-day .fb-sub'), /tier 6: Vanguard/);
+    await p.reload(); await p.waitForSelector('#day-list .task');
+    assert.equal(await p.textContent('#finish-day .fb-main'), 'Replay result', 'finished state survives reload');
+    await ctx.close();
+  });
+
+  await test('a perfect day plays the Legend tier with confetti', async () => {
+    const { ctx, p } = await open();
+    const n = await p.locator('#day-list .task input').count();
+    for (let i = 0; i < n; i++) await p.locator('#day-list .task input').nth(i).check();
+    await p.locator('#day-hero [data-finish]').click();
+    await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-name'), 'Legend');
+    assert.equal(await p.textContent('#win-tag'), 'Mission tier 11');
+    await p.waitForTimeout(1200);
+    const fx = await p.evaluate(() => window.MM.fxCount());
+    assert.ok(fx > 60, 'confetti and streaks: ' + fx);
+    await p.waitForTimeout(5500);
+    assert.equal(await p.textContent('#win-pct'), '100%');
+    assert.equal(await p.isVisible('#win-perfect'), true);
+    await ctx.close();
+  });
+
+  await test('a 0% day still gets an encouraging result', async () => {
+    const { ctx, p } = await open();
+    await p.click('#finish-day'); await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-name'), 'Recruit');
+    assert.match(await p.textContent('#win-msg'), /Every mission starts somewhere/);
+    await p.keyboard.press('Escape');
+    assert.equal(await p.isVisible('#win'), false, 'Escape or the back button closes it');
+    await ctx.close();
+  });
+
+  await test('sound plays with the result and the mute switch silences it', async () => {
+    const stub = `(()=>{const node=()=>{const n={connect:()=>n,start(){window.__started=(window.__started||0)+1},stop(){},type:'',buffer:null,Q:{value:1},gain:{value:1,setValueAtTime(){},exponentialRampToValueAtTime(){}},frequency:{value:1,setValueAtTime(){},exponentialRampToValueAtTime(){}}};return n;};
+      window.AudioContext=class{constructor(){window.__ctx=(window.__ctx||0)+1;this.currentTime=0;this.state='running';this.destination=node();this.sampleRate=8000;}createGain(){return node()}createOscillator(){return node()}createDynamicsCompressor(){return node()}createBiquadFilter(){return node()}createBufferSource(){return node()}createBuffer(){return {getChannelData:()=>new Float32Array(8)}}resume(){}};})()`;
+    const { ctx, p } = await open({ init: stub });
+    await p.click('#finish-day'); await p.waitForSelector('#win[open]');
+    const first = await p.evaluate(() => window.__started || 0);
+    assert.ok(first >= 3, 'sounds started: ' + first);
+    await p.click('#win-mute');
+    assert.equal((await S(p)).set.sound, false);
+    assert.match(await p.getAttribute('#win-mute', 'aria-label'), /Sound off/);
+    await p.click('#win-stage', { position: { x: 20, y: 20 } });
+    await p.click('#win-replay');
+    assert.equal(await p.evaluate(() => window.__started), first, 'no new sounds while muted');
+    await p.click('#win-close');
+    await tab(p, 'tools');
+    assert.equal(await p.isChecked('input[name=sound][value=off]'), true);
+    await p.check('input[name=sound][value=on]');
+    assert.equal((await S(p)).set.sound, true);
+    await ctx.close();
+  });
+
+  await test('reduced motion shows the result card without effects', async () => {
+    const { ctx, p } = await open();
+    await p.emulateMedia({ reducedMotion: 'reduce' });
+    for (let i = 0; i < 12; i++) await p.locator('#day-list .task input').nth(i).check();
+    await p.click('#finish-day'); await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-name'), 'Hero');
+    assert.equal(await p.textContent('#win-pct'), '92%');
+    assert.equal(await p.evaluate(() => window.MM.fxCount()), 0);
+    assert.equal(await p.isVisible('#win-skip'), false);
+    await ctx.close();
+  });
+
+  await test('finish day is offered only for days that can be finished', async () => {
+    const { ctx, p } = await open();
+    assert.equal(await p.isVisible('#finish-day'), true);
+    await goto(p, '2026-11-23'); assert.equal(await p.isVisible('#finish-day'), false, 'not for future days');
+    assert.equal(await p.locator('#day-hero [data-finish]').count(), 0);
+    await goto(p, '2026-11-21'); assert.equal(await p.isVisible('#finish-day'), false, 'not for rest days');
+    await goto(p, '2026-11-19'); assert.equal(await p.isVisible('#finish-day'), true, 'past days can be finished');
     await ctx.close();
   });
 

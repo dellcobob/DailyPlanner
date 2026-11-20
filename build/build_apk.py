@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild the Morning Missions Android app around a new planner HTML file.
+"""Rebuild the Daily Missions Android app around a new planner HTML file.
 
 The native shell (WebView, file save, print, back button) comes from build/wrapper.apk.
 This script swaps in the new assets/index.html, optionally bumps the version,
@@ -49,7 +49,11 @@ def make_key(folder):
     return kp, cp
 
 
-def patch_manifest(data, code, name):
+def patch_manifest(data, code, name, label=None):
+    if label is not None:
+        cur = next(raw for el, attr, _t, _v, _o, raw in axml.attributes(data) if el == 'application' and attr == 'label')
+        if cur != label:
+            data = axml.replace_string(data, cur, label)
     d = bytearray(data)
     for el, attr, vtype, vdata, off, raw in axml.attributes(bytes(d)):
         if el == 'manifest' and attr == 'versionCode' and code is not None:
@@ -66,7 +70,7 @@ def patch_manifest(data, code, name):
     return bytes(d)
 
 
-def build_zip(base, html, code, name):
+def build_zip(base, html, code, name, label=None):
     src = zipfile.ZipFile(base)
     out = io.BytesIO()
     dst = zipfile.ZipFile(out, 'w')
@@ -77,8 +81,8 @@ def build_zip(base, html, code, name):
         data = src.read(fn)
         if fn == 'assets/index.html':
             data = html
-        elif fn == 'AndroidManifest.xml' and (code is not None or name is not None):
-            data = patch_manifest(data, code, name)
+        elif fn == 'AndroidManifest.xml':
+            data = patch_manifest(data, code, name, label)
         zi = zipfile.ZipInfo(fn, date_time=(1981, 1, 1, 1, 1, 2))
         zi.compress_type = info.compress_type
         zi.external_attr = info.external_attr
@@ -131,12 +135,13 @@ def sign_v2(apk, key_pem, cert_pem):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--base', default=os.path.join(ROOT, 'build', 'wrapper.apk'))
-    ap.add_argument('--html', default=os.path.join(ROOT, 'Morning_Missions_Tracker.html'))
-    ap.add_argument('--out', default=os.path.join(ROOT, 'Morning_Missions_Android.apk'))
+    ap.add_argument('--html', default=os.path.join(ROOT, 'Daily_Missions.html'))
+    ap.add_argument('--out', default=os.path.join(ROOT, 'Daily_Missions_Android.apk'))
     ap.add_argument('--key'); ap.add_argument('--cert')
     ap.add_argument('--new-key', metavar='FOLDER', help='create key.pem and cert.pem in FOLDER, then build')
-    ap.add_argument('--version-code', type=int, default=2)
-    ap.add_argument('--version-name', default='2.0.0')
+    ap.add_argument('--version-code', type=int, default=4)
+    ap.add_argument('--version-name', default='2.2.0')
+    ap.add_argument('--label', default='Daily Missions', help='app name shown on the home screen')
     a = ap.parse_args()
     if a.new_key:
         a.key, a.cert = make_key(a.new_key)
@@ -145,7 +150,7 @@ def main():
         ap.error('pass --key and --cert, or --new-key FOLDER')
     with open(a.html, 'rb') as f:
         html = f.read()
-    unsigned = build_zip(a.base, html, a.version_code, a.version_name)
+    unsigned = build_zip(a.base, html, a.version_code, a.version_name, a.label)
     with open(a.key, 'rb') as k, open(a.cert, 'rb') as c:
         apk = sign_v2(unsigned, k.read(), c.read())
     with open(a.out, 'wb') as f:
