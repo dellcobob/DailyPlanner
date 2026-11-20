@@ -12,6 +12,7 @@ Morning Missions: a daily planner that runs fully offline on your phone. No acco
 - **Opens on today** in a one-day view. Swipe left or right, or use the arrows, to change days.
 - **Check off** objectives. The ring, the day strip, and the hex backdrop fill in as you go.
 - **Add, edit, and remove tasks.** Each task has a name, a start and end time, and the weekdays it repeats on (or "This day only").
+- **Type-ahead names.** As you type a task name, a dropdown suggests tasks you already have, with their usual time and days. Picking one for a new task fills in its time too.
 - **Reorder by dragging** the grip on the right, or press and hold a task. Order never changes a task's time. To change a time, tap the time.
 - **Repeating tasks:** when you change or remove one, choose "only this day" or "this day and later". Earlier days always keep what they had.
 - **Week view** with seven columns, and **Month view** to look back at any day, see streaks, and open weekly records.

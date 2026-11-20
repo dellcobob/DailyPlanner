@@ -380,6 +380,51 @@ async function test(name, fn) {
     await ctx.close();
   });
 
+  await test('task name suggests tasks you already have', async () => {
+    const { ctx, p } = await open();
+    const names = () => p.$$eval('#ts-suggest:not([hidden]) .s-name', els => els.map(e => e.textContent));
+    await p.click('#add-row');
+    await p.locator('#ts-name').pressSequentially('med');
+    assert.deepEqual(await names(), ['Meditation', 'Meds & breakfast', 'Yoga & meditation']);
+    assert.match(await p.textContent('#ts-suggest li:first-child .s-meta'), /^6:35–6:50 AM · Mon Wed Fri$/);
+    await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter');
+    assert.equal(await p.inputValue('#ts-name'), 'Meds & breakfast');
+    assert.equal(await p.inputValue('#ts-start'), '07:20'); assert.equal(await p.inputValue('#ts-end'), '07:45');
+    assert.equal(await p.isVisible('#task-sheet'), true, 'Enter on a suggestion picks it instead of saving');
+    assert.match(await p.textContent('#ts-name-hint'), /already on this day at 7:20–7:45 AM/);
+    await p.fill('#ts-name', ''); await p.locator('#ts-name').pressSequentially('wal');
+    await p.click('#ts-suggest li:has-text("Walk down")');
+    assert.equal(await p.inputValue('#ts-name'), 'Walk down'); assert.equal(await p.inputValue('#ts-start'), '09:20');
+    assert.equal(await p.isVisible('#ts-suggest'), false);
+    await p.fill('#ts-name', ''); await p.locator('#ts-name').pressSequentially('yo');
+    assert.equal(await p.isVisible('#ts-suggest'), true);
+    await p.keyboard.press('Escape');
+    assert.equal(await p.isVisible('#ts-suggest'), false, 'Escape closes the list');
+    assert.equal(await p.isVisible('#task-sheet'), true, 'Escape leaves the editor open');
+    await p.fill('#ts-name', ''); await p.locator('#ts-name').pressSequentially('Piano practice');
+    assert.equal(await p.isVisible('#ts-suggest'), false);
+    await p.keyboard.press('Enter');
+    assert.ok((await titles(p)).includes('Piano practice'), 'new names still save');
+    await ctx.close();
+  });
+
+  await test('one-day tasks are suggested, and editing keeps the time', async () => {
+    const { ctx, p } = await open();
+    await p.click('#add-row'); await p.fill('#ts-name', 'Dentist'); await p.fill('#ts-start', '11:00'); await p.fill('#ts-end', '12:00');
+    await p.click('#task-sheet [data-mask="0"]'); await p.click('#ts-save');
+    await goto(p, '2026-11-23');
+    await p.click('#add-row'); await p.locator('#ts-name').pressSequentially('dent');
+    assert.match(await p.textContent('#ts-suggest li:first-child'), /^Dentist11:00 AM – 12:00 PM · One-day task$/);
+    await p.keyboard.press('Escape'); await p.click('#task-sheet .sheet-foot [data-close]');
+    await openEdit(p, 'Yoga');
+    await p.fill('#ts-name', ''); await p.locator('#ts-name').pressSequentially('yog');
+    assert.deepEqual(await p.$$eval('#ts-suggest .s-name', els => els.map(e => e.textContent)), ['Yoga & meditation'], 'the task being edited is not suggested to itself');
+    await p.click('#ts-suggest li:has-text("Yoga & meditation")');
+    assert.equal(await p.inputValue('#ts-name'), 'Yoga & meditation');
+    assert.equal(await p.inputValue('#ts-start'), '06:15', 'editing keeps the time');
+    await ctx.close();
+  });
+
   await test('layout fits phone widths with long names and large text', async () => {
     const { ctx, p } = await open({ viewport: { width: 320, height: 700 } });
     await p.addStyleTag({ content: 'html{font-size:130%}' });
@@ -390,6 +435,9 @@ async function test(name, fn) {
       const w = await p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
       assert.equal(w[0], w[1], v + ' view scrolls sideways');
     }
+    await tab(p, 'day'); await p.click('#add-row'); await p.locator('#ts-name').pressSequentially('a');
+    const box = await p.locator('#ts-suggest').boundingBox();
+    assert.ok(box && box.x >= 0 && box.x + box.width <= 320, 'suggestion list fits the screen');
     await ctx.close();
   });
 
