@@ -2,6 +2,8 @@
 <html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-Om6qaBdlSip/kygDfv84PXigsAF4qlszJoI76mxFBz8='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#182331">
 <meta name="color-scheme" content="light dark">
@@ -276,6 +278,13 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
 .win-actions .btn.ghost{background:transparent;color:#fff;border-color:#ffffff66}
 .win-skip{margin:16px 0 0;font-size:.78rem;color:#93a4b8;letter-spacing:.06em}
 .win-mute{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;z-index:2;color:#dfe7f0;background:#ffffff14}
+.lock{min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.lock-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:4px 4px 14px 14px;padding:22px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px}
+.lock-card svg{width:46px;height:46px;color:var(--ink)}
+.lock-card h1{margin:0;font-size:1.35rem;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.01em}
+.lock-card .btn{width:100%}
+.is-locked main,.is-locked .tabs,.is-locked #theme-btn{display:none!important}
+.veil main,.veil dialog{visibility:hidden!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 @media print{.top,.tabs,#backdrop,.toast,#banner{display:none!important}body{background:#fff;color:#000;padding:0}}
 </style>
@@ -293,6 +302,16 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
  <button id="theme-btn" class="icon-btn" aria-label="Change theme"></button>
 </div></header>
 <noscript><div class="nojs-msg"><strong>This planner needs JavaScript.</strong><br>Some file previews (like the iPhone Files app) show the page without running it. Open the file in a full browser, or install the Android app.</div></noscript>
+<section id="lock" class="lock" hidden aria-labelledby="lock-title"><form class="lock-card" id="lock-form" novalidate>
+ <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3.5 34.3 11.8v16.4L20 36.5 5.7 28.2V11.8Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><rect x="13" y="18" width="14" height="11" rx="2" fill="#ffac32"/><path d="M15.5 18v-3a4.5 4.5 0 0 1 9 0v3" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>
+ <h1 id="lock-title">Daily Missions is locked</h1>
+ <p class="hint" style="margin:0">Enter your passcode to open your planner.</p>
+ <label class="field" for="lock-pass" style="margin:6px 0 0">Passcode</label>
+ <input id="lock-pass" class="input" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+ <p class="error" id="lock-error" role="alert"></p>
+ <button class="btn primary" id="lock-go" type="submit">Unlock</button>
+ <button class="btn ghost sm" id="lock-forgot" type="button">Forgot passcode?</button>
+</form></section>
 <main class="wrap" id="main">
  <div id="banner"></div>
  <section id="view-day" class="view" aria-label="Day">
@@ -329,8 +348,15 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
     <div class="row-btns"><button class="btn ghost" id="st-check">Check storage now</button></div>
     <p class="hint">A day's score is just "done / total", a few bytes. Archived days still show in Month view, without their task list.</p>
    </section>
+   <section class="card"><h2>App lock</h2><p class="hint" id="lock-status" style="margin:0 0 10px"></p>
+    <div class="row-btns" id="lock-off-btns"><button class="btn primary" id="lock-enable">Set a passcode</button></div>
+    <div id="lock-on-ui" hidden>
+     <label class="field">Lock again after you leave the app<select id="set-lockafter" class="input"><option value="0">Right away</option><option value="1">After 1 minute</option><option value="5">After 5 minutes</option><option value="15">After 15 minutes</option><option value="60">After 1 hour</option></select></label>
+     <div class="row-btns"><button class="btn primary" id="lock-now">Lock now</button><button class="btn ghost" id="lock-change">Change passcode</button><button class="btn ghost" id="lock-disable">Turn off</button></div>
+    </div>
+    <p class="hint">With a passcode, everything Daily Missions stores on this device is encrypted, and so are your backups and HTML copies. If you forget the passcode the data cannot be recovered, so keep a backup somewhere safe.</p></section>
    <section class="card"><h2>Backups</h2><p class="hint" style="margin:0 0 10px">A backup holds your routine, check marks, notes, and settings. Keep one somewhere safe before you switch phones or reinstall the app.</p>
-    <div class="row-btns"><button class="btn primary" id="export-backup">Export backup (.json)</button><button class="btn ghost" id="import-backup">Restore backup</button><button class="btn ghost" id="save-html">Save HTML copy</button></div>
+    <div class="row-btns"><button class="btn primary" id="export-backup">Export backup (.json)</button><button class="btn ghost" id="import-backup">Restore backup</button><button class="btn ghost" id="save-html">Save HTML copy</button><button class="btn ghost" id="export-plain" hidden>Export unencrypted backup</button></div>
     <p class="hint">Restore also reads backups from the older Morning Missions tracker. The HTML copy is the whole planner with your data inside it.</p></section>
    <section class="card"><h2>Weekly records</h2><p class="hint" style="margin:0 0 10px">A readable snapshot of one week, laid out like a printed schedule.</p>
     <div class="row-btns"><button class="btn ghost" id="rec-this">View this week</button><button class="btn ghost" id="rec-dl-this">Download</button><button class="btn ghost" id="rec-print-this">Print / PDF</button></div>
@@ -340,6 +366,12 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
  </section>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden><span id="toast-msg"></span><button id="toast-act" hidden></button></div>
+<dialog id="pass-dialog" aria-labelledby="pass-title"><div class="sheet-head"><h2 id="pass-title"></h2></div><form class="sheet-body" id="pass-form" novalidate><p id="pass-body"></p>
+ <div class="field" id="pass-cur-f"><label for="pass-cur">Passcode</label><input id="pass-cur" class="input" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+ <div class="field" id="pass-new-f"><label for="pass-new">New passcode</label><input id="pass-new" class="input" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+ <div class="field" id="pass-new2-f"><label for="pass-new2">Type the new passcode again</label><input id="pass-new2" class="input" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+ <p class="hint" id="pass-hint"></p><p class="error" id="pass-error" role="alert"></p><button type="submit" hidden tabindex="-1"></button></form>
+ <div class="sheet-foot"><span class="spacer"></span><button class="btn ghost" id="pass-cancel" type="button">Cancel</button><button class="btn primary" id="pass-ok" type="button">OK</button></div></dialog>
 <dialog id="win" aria-labelledby="win-name" aria-describedby="win-msg">
  <svg class="win-hex" id="win-hex" aria-hidden="true" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice"></svg>
  <canvas id="win-fx" aria-hidden="true"></canvas>
@@ -373,12 +405,14 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
  </form>
  <div class="sheet-foot"><button class="btn danger" id="ts-delete" type="button">Delete</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Cancel</button><button class="btn primary" id="ts-save" type="button">Save</button></div>
 </dialog>
-<dialog id="record-dialog" class="sheet wide" aria-labelledby="rec-title"><div class="sheet-head"><h2 id="rec-title">Weekly record</h2><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div><div class="sheet-body"><iframe id="rec-frame" title="Weekly record preview" sandbox="allow-same-origin allow-modals"></iframe></div><div class="sheet-foot"><span class="spacer"></span><button class="btn ghost" id="rec-download">Download</button><button class="btn primary" id="rec-print">Print / save PDF</button></div></dialog>
+<dialog id="record-dialog" class="sheet wide" aria-labelledby="rec-title"><div class="sheet-head"><h2 id="rec-title">Weekly record</h2><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div><div class="sheet-body"><iframe id="rec-frame" title="Weekly record preview" sandbox=""></iframe></div><div class="sheet-foot"><span class="spacer"></span><button class="btn ghost" id="rec-download">Download</button><button class="btn primary" id="rec-print">Print / save PDF</button></div></dialog>
 <input type="file" id="backup-file" accept=".json,application/json,text/plain" hidden>
 <script type="application/json" id="initial-state">null</script>
 <script id="app">
 (function(){
 'use strict';
+// Never run inside another page's frame.
+if(window.top!==window.self){document.documentElement.classList.remove('no-js');document.body.textContent='Open Daily Missions directly, not inside another page.';return;}
 var docEl=document.documentElement;
 var cleanRoot=docEl.cloneNode(true);
 cleanRoot.querySelectorAll('script:not(#initial-state):not(#app):not(#theme-boot)').forEach(function(n){n.remove();});
@@ -405,6 +439,13 @@ const toMin=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(t||'');if(!m)return NaN;const 
 const hhmm=n=>pad(Math.floor(n/60))+':'+pad(n%60);
 const isMin=n=>Number.isInteger(n)&&n>=0&&n<=1439;
 const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
+// Maps keyed by ids or dates have no prototype, so keys like "constructor" can't collide with built-ins.
+const dict=()=>Object.create(null);
+// Strip control characters and invisible direction overrides that can disguise text.
+const BAD1=/[\u0000-\u001F\u007F-\u009F\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,BADML=/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+const clean1=(x,max)=>String(x).replace(BAD1,'').trim().slice(0,max);
+const cleanML=(x,max)=>String(x).replace(BADML,'').slice(0,max);
+const LIM={tasks:1000,vers:400,allVers:20000,days:40000,perDay:1100,once:60,notes:3000,months:1200,seq:1e12};
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
 const fmtD=(s,o)=>parse(s).toLocaleDateString(undefined,o);
 const longDate=s=>fmtD(s,{month:'short',day:'numeric',year:'numeric'});
@@ -412,12 +453,12 @@ const shortDate=s=>fmtD(s,{weekday:'short',month:'short',day:'numeric'});
 const weekRange=ws=>fmtD(ws,{month:'short',day:'numeric'})+' – '+fmtD(addDays(ws,6),{month:'short',day:'numeric',year:'numeric'});
 const maskLabel=m=>m===127?'Every day':m===31?'Weekdays':m===96?'Weekends':SHORT.filter((_,i)=>m&(1<<i)).join(' ');
 
-const DEF={theme:'auto',clock:12,keep:12,cap:500,old:'score',ask:true,scope:'ask',sound:true};
-const OPT={theme:['auto','light','dark'],clock:[12,24],keep:[1,3,6,12,24,0],cap:[100,250,500,1000,2000,4000],old:['score','delete'],ask:[true,false],scope:['ask','day','after'],sound:[true,false]};
+const DEF={theme:'auto',clock:12,keep:12,cap:500,old:'score',ask:true,scope:'ask',sound:true,lockAfter:1};
+const OPT={theme:['auto','light','dark'],clock:[12,24],keep:[1,3,6,12,24,0],cap:[100,250,500,1000,2000,4000],old:['score','delete'],ask:[true,false],scope:['ask','day','after'],sound:[true,false],lockAfter:[0,1,5,15,60]};
 
 /* ---------- data ---------- */
 function fresh(){
- const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:{},days:{},notes:{},scores:{}};
+ const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:dict(),days:dict(),notes:dict(),scores:dict()};
  const MWF=21,TTH=10,WK=31;
  [['06:00','06:15','Water, pray, laundry',MWF],['06:00','06:15','Water, pray, workout',TTH],['06:15','06:35','Yoga',MWF],['06:15','06:35','Workout',TTH],['06:35','06:50','Meditation',MWF],['06:35','06:50','Yoga & meditation',TTH],['06:50','07:00','Shower',WK],['07:00','07:10','Flip laundry',MWF],['07:00','07:10','Cool down',TTH],['07:10','07:20','Plan for the day',WK],['07:20','07:45','Meds & breakfast',WK],['07:45','08:00','Coffee',WK],['08:00','08:20','Journal & get laundry',MWF],['08:00','08:20','Journal',TTH],['08:20','09:20','Study',WK],['09:20','09:35','Walk down',WK],['09:35','10:00','Call family',WK],['10:00','10:30','Group',WK]]
  .forEach((r,i)=>{s.tasks[(s.seq++).toString(36)]={o:(i+1)*1024,h:[{f:EPOCH,t:r[2],s:toMin(r[0]),e:toMin(r[1]),d:r[3]}]};});
@@ -427,61 +468,66 @@ function validate(raw){
  if(!isObj(raw))throw Error('This is not a Daily Missions backup.');
  if(raw.schema===2)return migrate2(raw);
  if(raw.v!==3)throw Error('This is not a Daily Missions backup.');
- const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:{},days:{},notes:{},scores:{}};
- if(typeof raw.name==='string')s.name=raw.name.slice(0,60);
+ const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:dict(),days:dict(),notes:dict(),scores:dict()};
+ if(typeof raw.name==='string')s.name=clean1(raw.name,60);
  if(isDate(raw.since))s.since=raw.since;
  if(raw.pruned!=null){if(!isDate(raw.pruned))throw Error('Invalid archive date.');s.pruned=raw.pruned;}
  if(isObj(raw.set))for(const k in DEF)if(OPT[k].indexOf(raw.set[k])>=0)s.set[k]=raw.set[k];
  if(typeof raw.pid==='string'&&/^[a-z0-9]{1,40}$/i.test(raw.pid))s.pid=raw.pid;
  if(!isObj(raw.tasks))throw Error('The backup has no routine.');
- const ids=Object.keys(raw.tasks);if(ids.length>3000)throw Error('Too many tasks.');
- let maxId=-1;const seen=id=>{const n=parseInt(id,36);if(n>maxId)maxId=n;};
+ const ids=Object.keys(raw.tasks);if(ids.length>LIM.tasks)throw Error('The backup has too many tasks.');
+ let maxId=-1,vers=0;const seen=id=>{if(id.length>8)return;const n=parseInt(id,36);if(n>maxId)maxId=n;};
+ const okO=o=>Number.isFinite(o)&&Math.abs(o)<1e15;
  for(const id of ids){
   const t=raw.tasks[id];
-  if(!IDRE.test(id)||!isObj(t)||!Number.isFinite(t.o)||!Array.isArray(t.h)||!t.h.length||t.h.length>500)throw Error('A task in the backup is damaged.');
+  if(!IDRE.test(id)||!isObj(t)||!okO(t.o)||!Array.isArray(t.h)||!t.h.length||t.h.length>LIM.vers)throw Error('A task in the backup is damaged.');
+  if((vers+=t.h.length)>LIM.allVers)throw Error('The backup has too much task history.');
   const h=[];
   for(const v of t.h){
    if(!isObj(v)||!isDate(v.f)||!Number.isInteger(v.d)||v.d<0||v.d>127)throw Error('A task in the backup is damaged.');
-   const tt=typeof v.t==='string'?v.t.trim().slice(0,120):'';
+   const tt=typeof v.t==='string'?clean1(v.t,120):'';
    if(v.d&&(!tt||!isMin(v.s)||!isMin(v.e)||v.e<=v.s))throw Error('A task in the backup has an invalid name or time.');
    h.push({f:v.f,t:tt,s:isMin(v.s)?v.s:0,e:isMin(v.e)?v.e:15,d:v.d});
   }
   h.sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:0);
   s.tasks[id]={o:t.o,h:h.filter((v,i)=>i===h.length-1||h[i+1].f!==v.f)};seen(id);
  }
- if(isObj(raw.days)){
-  const keys=Object.keys(raw.days);if(keys.length>40000)throw Error('Too many days in the backup.');
+ if(raw.days!=null){
+  if(!isObj(raw.days))throw Error('The day records in the backup are damaged.');
+  const keys=Object.keys(raw.days);if(keys.length>LIM.days)throw Error('The backup has too many days.');
   for(const k of keys){
    const L=raw.days[k];if(!isDate(k)||!isObj(L))throw Error('A day in the backup is damaged.');
    const o={};
-   if(Array.isArray(L.c)){const c=Array.from(new Set(L.c.filter(x=>typeof x==='string'&&IDRE.test(x)))).slice(0,500);if(c.length)o.c=c;}
-   if(isObj(L.x)){const x={};for(const id of Object.keys(L.x)){const v=L.x[id];if(!IDRE.test(id))continue;if(v===0){x[id]=0;continue;}if(!isObj(v))continue;const y={};if(typeof v.t==='string'&&v.t.trim())y.t=v.t.trim().slice(0,120);if(isMin(v.s))y.s=v.s;if(isMin(v.e))y.e=v.e;if(Object.keys(y).length)x[id]=y;}if(Object.keys(x).length)o.x=x;}
-   if(Array.isArray(L.a)){const a=[];for(const v of L.a.slice(0,100)){if(!isObj(v)||typeof v.id!=='string'||!IDRE.test(v.id)||typeof v.t!=='string'||!v.t.trim()||!isMin(v.s)||!isMin(v.e)||v.e<=v.s||!Number.isFinite(v.o))throw Error('A one-day task in the backup is damaged.');a.push({id:v.id,t:v.t.trim().slice(0,120),s:v.s,e:v.e,o:v.o});seen(v.id);}if(a.length)o.a=a;}
+   if(Array.isArray(L.c)){const c=Array.from(new Set(L.c.slice(0,LIM.perDay*2).filter(x=>typeof x==='string'&&IDRE.test(x)))).slice(0,LIM.perDay);if(c.length)o.c=c;}
+   if(isObj(L.x)){const x=dict();let n=0;for(const id of Object.keys(L.x)){if(++n>LIM.perDay)break;const v=L.x[id];if(!IDRE.test(id))continue;if(v===0){x[id]=0;continue;}if(!isObj(v))continue;const y={};if(typeof v.t==='string'&&clean1(v.t,120))y.t=clean1(v.t,120);if(isMin(v.s))y.s=v.s;if(isMin(v.e))y.e=v.e;if(Object.keys(y).length)x[id]=y;}if(Object.keys(x).length)o.x=x;}
+   if(Array.isArray(L.a)){if(L.a.length>LIM.once)throw Error('A day in the backup has too many one-day tasks.');const a=[];for(const v of L.a){const tt=isObj(v)&&typeof v.t==='string'?clean1(v.t,120):'';if(!isObj(v)||typeof v.id!=='string'||!IDRE.test(v.id)||!tt||!isMin(v.s)||!isMin(v.e)||v.e<=v.s||!okO(v.o))throw Error('A one-day task in the backup is damaged.');a.push({id:v.id,t:tt,s:v.s,e:v.e,o:v.o});seen(v.id);}if(a.length)o.a=a;}
    if(L.f===1)o.f=1;
    if(Object.keys(o).length)s.days[k]=o;
   }
  }
- if(isObj(raw.notes))for(const k of Object.keys(raw.notes)){const v=raw.notes[k];if(isDate(k)&&monday(k)===k&&typeof v==='string'&&v)s.notes[k]=v.slice(0,6000);}
- if(isObj(raw.scores))for(const k of Object.keys(raw.scores)){const v=raw.scores[k];if(/^\d{4}-\d{2}$/.test(k)&&typeof v==='string'&&/^[0-9/,]*$/.test(v)&&v.length<=400)s.scores[k]=v;}
- s.seq=Math.max(Number.isInteger(raw.seq)&&raw.seq>=0?raw.seq:0,maxId+1);
+ if(isObj(raw.notes)){const ks=Object.keys(raw.notes);if(ks.length>LIM.notes)throw Error('The backup has too many notes.');for(const k of ks){const v=raw.notes[k];if(isDate(k)&&monday(k)===k&&typeof v==='string'){const t=cleanML(v,6000);if(t)s.notes[k]=t;}}}
+ if(isObj(raw.scores)){const ks=Object.keys(raw.scores);if(ks.length>LIM.months)throw Error('The backup has too many scores.');for(const k of ks){const v=raw.scores[k];if(/^\d{4}-\d{2}$/.test(k)&&typeof v==='string'&&/^[0-9/,]*$/.test(v)&&v.length<=400)s.scores[k]=v;}}
+ if(raw.seq!=null&&!(Number.isInteger(raw.seq)&&raw.seq>=0&&raw.seq<=LIM.seq))throw Error('The backup is damaged.');
+ s.seq=Math.max(raw.seq||0,maxId+1);if(!(s.seq<=LIM.seq))throw Error('The backup is damaged.');
  return s;
 }
 /* Reads data from the older weekly tracker (schema 2) into the new format. */
 function migrate2(raw){
  const okGroups=gs=>Array.isArray(gs)&&gs.every(g=>isObj(g)&&Array.isArray(g.days)&&Array.isArray(g.tasks));
- if(!okGroups(raw.template)||!isObj(raw.weeks))throw Error('This older backup could not be read.');
- const weeks=Object.values(raw.weeks).filter(w=>isObj(w)&&isDate(w.start)&&okGroups(w.groups)).sort((a,b)=>a.start<b.start?-1:1);
- const s=fresh();s.tasks={};s.seq=0;s.name=typeof raw.name==='string'?raw.name.slice(0,60):'';
+ if(!okGroups(raw.template)||!isObj(raw.weeks)||Object.keys(raw.weeks).length>1000)throw Error('This older backup could not be read.');
+ const weeks=Object.values(raw.weeks).filter(w=>isObj(w)&&isDate(w.start)&&okGroups(w.groups)&&w.groups.length<=7).sort((a,b)=>a.start<b.start?-1:1);
+ if(raw.template.length>7)throw Error('This older backup could not be read.');
+ const s=fresh();s.tasks=dict();s.seq=0;s.name=typeof raw.name==='string'?clean1(raw.name,60):'';
  const keyOf=t=>t.label.trim().toLowerCase()+'|'+t.time;
  function describe(groups){
   const m=new Map(),perDay=[0,1,2,3,4,5,6].map(()=>new Map());
   for(const g of groups){
-   const ts=g.tasks.filter(t=>isObj(t)&&typeof t.id==='string'&&typeof t.label==='string'&&t.label.trim()&&!isNaN(toMin(t.time))).sort((a,b)=>toMin(a.time)-toMin(b.time));
+   const ts=g.tasks.slice(0,60).filter(t=>isObj(t)&&typeof t.id==='string'&&t.id.length<=80&&typeof t.label==='string'&&clean1(t.label,120)&&typeof t.time==='string'&&!isNaN(toMin(t.time))).sort((a,b)=>toMin(a.time)-toMin(b.time));
    ts.forEach((t,i)=>{
     const st=toMin(t.time);let en=i+1<ts.length?toMin(ts[i+1].time):st+30;if(en<=st)en=st+15;if(en>1439)en=1439;if(en<=st)return;
     const k=keyOf(t);let mask=0;
     for(const d of g.days)if(Number.isInteger(d)&&d>=0&&d<7){mask|=1<<d;perDay[d].set(t.id,k);}
-    const cur=m.get(k);if(cur)cur.d|=mask;else m.set(k,{t:t.label.trim().slice(0,120),s:st,e:en,d:mask});
+    const cur=m.get(k);if(cur)cur.d|=mask;else m.set(k,{t:clean1(t.label,120),s:st,e:en,d:mask});
    });
   }
   return {m,perDay};
@@ -512,7 +558,7 @@ function migrate2(raw){
    const d=+m[1],k=e.perDay[d]&&e.perDay[d].get(m[2]);if(!k)continue;
    const date=addDays(w.start,d),L=s.days[date]||(s.days[date]={});(L.c||(L.c=[])).push(idOf.get(k));
   }
-  if(typeof w.notes==='string'&&w.notes.trim())s.notes[monday(w.start)]=w.notes.slice(0,6000);
+  if(typeof w.notes==='string'&&w.notes.trim())s.notes[monday(w.start)]=cleanML(w.notes,6000);
  }
  s.since=weeks.length?weeks[0].start:today();
  const out=validate(s);
@@ -528,22 +574,52 @@ const KEY='morning-missions-v3'+(seedPid?'-'+seedPid:'');
 let state=null,storageOK=true,notice='';
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){storageOK=false;return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+/* Optional encryption at rest: PBKDF2-SHA256 (600k rounds) turns the passcode into an AES-256-GCM key.
+   Each save uses a fresh random IV. The key is kept in memory only while unlocked and cannot be exported. */
+const ITER=600000,AAD=new TextEncoder().encode('daily-missions/enc1');
+const canCrypt=()=>!!(window.crypto&&crypto.subtle&&crypto.getRandomValues&&window.isSecureContext!==false);
+const B64=/^[A-Za-z0-9+/]+={0,2}$/;
+const isEnc=o=>isObj(o)&&o.dm==='enc1'&&o.kdf==='PBKDF2-SHA256'&&Number.isInteger(o.it)&&o.it>=100000&&o.it<=5000000&&typeof o.salt==='string'&&o.salt.length>=22&&o.salt.length<=64&&B64.test(o.salt)&&typeof o.iv==='string'&&o.iv.length===16&&B64.test(o.iv)&&typeof o.ct==='string'&&o.ct.length>=24&&o.ct.length<=16e6&&B64.test(o.ct);
+function b64(u){let x='';for(let i=0;i<u.length;i+=0x8000)x+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(x);}
+function unb64(x){const b=atob(x),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+async function deriveKey(pass,salt,it){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass.normalize('NFC')),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:it},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function newKey(pass){const salt=crypto.getRandomValues(new Uint8Array(16));return {key:await deriveKey(pass,salt,ITER),salt,it:ITER};}
+async function seal(json,k,pid){const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:AAD},k.key,new TextEncoder().encode(json));const o={dm:'enc1',kdf:'PBKDF2-SHA256',it:k.it,salt:b64(k.salt),iv:b64(iv),ct:b64(new Uint8Array(ct))};if(pid)o.pid=pid;return JSON.stringify(o);}
+async function unseal(o,pass){const salt=unb64(o.salt),key=await deriveKey(pass,salt,o.it);let pt;try{pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(o.iv),additionalData:AAD},key,unb64(o.ct));}catch(e){return null;}return {json:new TextDecoder().decode(pt),k:{key,salt,it:o.it}};}
+let lk=null,locked=false,lockedBlob=null,sealing=null,sealNext=null,lastWritten=null;
 (function load(){
  const raw=lsGet(KEY);
- if(raw){try{state=validate(JSON.parse(raw));}catch(e){lsSet(KEY+'-unreadable-'+Date.now(),raw);notice='Saved data on this device could not be read, so it was set aside. Restore a backup from Tools if something is missing.';}}
- if(!state&&seed){try{state=validate(seed);if(seedPid)state.pid=seedPid;}catch(e){}}
+ if(raw){
+  let o=null;try{if(raw.length<=20e6)o=JSON.parse(raw);}catch(e){}
+  if(isEnc(o)){lockedBlob=o;locked=true;return;}
+  try{state=validate(o);}catch(e){lsSet(KEY+'-unreadable-'+Date.now(),raw);notice='Saved data on this device could not be read, so it was set aside. Restore a backup from Tools if something is missing.';}
+ }
+ if(!state&&seed){if(isEnc(seed)){lockedBlob=seed;locked=true;return;}try{state=validate(seed);if(seedPid)state.pid=seedPid;}catch(e){}}
  if(!state&&!seedPid){const old=lsGet('morning-missions-v2');if(old){try{state=validate(JSON.parse(old));notice='Your routine and check marks from the earlier tracker were moved into this planner.';}catch(e){}}}
  if(!state)state=fresh();
 })();
-function save(){
- const json=JSON.stringify(state),ok=lsSet(KEY,json);
- if(ok!==storageOK){storageOK=ok;renderBanner();}
- if(json.length>state.set.cap*1024&&!pending&&!snoozed)setTimeout(()=>runPruneCheck(false),0);
- return ok;
+function setStorageOK(ok){if(ok!==storageOK){storageOK=ok;renderBanner();}}
+function persist(json){
+ if(!lk){const ok=lsSet(KEY,json);if(ok)lastWritten=json;setStorageOK(ok);return;}
+ sealNext=json;if(sealing)return;
+ sealing=(async()=>{while(sealNext!==null){const j=sealNext;sealNext=null;let ok=false;try{const out=await seal(j,lk,state&&state.pid);ok=lsSet(KEY,out);if(ok)lastWritten=out;}catch(e){}setStorageOK(ok);}sealing=null;})();
 }
+async function flush(){while(sealing)await sealing;}
+const sizeOf=json=>lk?Math.ceil(json.length*4/3)+300:json.length;
+function save(){
+ if(locked||!state)return storageOK;
+ const json=JSON.stringify(state);persist(json);
+ if(sizeOf(json)>state.set.cap*1024&&!pending&&!snoozed)setTimeout(()=>runPruneCheck(false),0);
+ return storageOK;
+}
+function parseStored(){try{return JSON.parse(lsGet(KEY));}catch(e){return null;}}
+// Removes this planner's leftover unencrypted copies (old tracker data, set-aside unreadable data).
+function purgeLeftovers(all){try{const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if((all&&k===KEY)||k.indexOf(KEY+'-unreadable-')===0||(!seedPid&&k==='morning-missions-v2'))ks.push(k);}ks.forEach(lsDel);}catch(e){}}
 
 /* ---------- model ---------- */
 const nid=()=>(state.seq++).toString(36);
+const randHex=n=>{const u=new Uint8Array(n);try{crypto.getRandomValues(u);}catch(e){for(let i=0;i<n;i++)u[i]=Math.random()*256;}return Array.from(u,b=>b.toString(16).padStart(2,'0')).join('');};
 const ver=(tk,date)=>{let v=null;for(const x of tk.h){if(x.f<=date)v=x;else break;}return v;};
 const getLog=date=>state.days[date]||(state.days[date]={});
 function tidy(date){const L=state.days[date];if(!L)return;if(L.c&&!L.c.length)delete L.c;if(L.x&&!Object.keys(L.x).length)delete L.x;if(L.a&&!L.a.length)delete L.a;if(!Object.keys(L).length)delete state.days[date];}
@@ -597,11 +673,14 @@ function setFrom(id,date,v){
  tk.h=tk.h.filter(x=>x.f<date);
  const p=tk.h[tk.h.length-1];
  if(!(p&&p.t===v.t&&p.s===v.s&&p.e===v.e&&p.d===v.d))tk.h.push({f:date,t:v.t,s:v.s,e:v.e,d:v.d});
+ while(tk.h.length>LIM.vers){tk.h[1].f=tk.h[0].f;tk.h.shift();}
  if(tk.h.every(x=>x.d===0))delete state.tasks[id];
 }
 function clearLater(id,date){for(const k of Object.keys(state.days))if(k>date){const L=state.days[k];if(L.c)L.c=L.c.filter(x=>x!==id);if(L.x)delete L.x[id];tidy(k);}}
 function addTask(date,v){
  const list=items(date);let idx=list.findIndex(i=>i.s>v.s);if(idx<0)idx=list.length;
+ if(v.d&&Object.keys(state.tasks).length>=LIM.tasks)throw Error('You have reached the limit of '+LIM.tasks+' repeating tasks. Remove some old ones first.');
+ if(!v.d&&((state.days[date]||{}).a||[]).length>=LIM.once)throw Error('A day can have up to '+LIM.once+' one-day tasks.');
  const o=slotO(date,null,idx),id=nid();
  if(!v.d){const L=getLog(date);(L.a||(L.a=[])).push({id,t:v.t,s:v.s,e:v.e,o});return 'Added for '+shortDate(date)+' only.';}
  state.tasks[id]={o,h:[{f:date,t:v.t,s:v.s,e:v.e,d:v.d}]};
@@ -650,11 +729,11 @@ function detailStart(){if(state.pruned)return state.pruned;let m=state.since;for
 function planPrune(){
  const start=detailStart(),t=today();let cut=null,why='age';
  const tc=cutoff();if(tc&&tc>start)cut=tc;
- const cap=state.set.cap*1024,size=JSON.stringify(state).length;
+ const cap=state.set.cap*1024,size=sizeOf(JSON.stringify(state)),f=lk?4/3:1;
  if(size>cap){
   let est=size;
   for(const k of Object.keys(state.days).sort()){
-   if(k>=t)break;const drop=JSON.stringify(state.days[k]).length+k.length+4;
+   if(k>=t)break;const drop=(JSON.stringify(state.days[k]).length+k.length+4)*f;
    if(cut&&k<cut){est-=drop;continue;}
    if(est<=cap*0.9)break;est-=drop;cut=addDays(k,1);why='size';
   }
@@ -677,7 +756,7 @@ function archive(cut){
  }
  state.pruned=state.pruned&&state.pruned>cut?state.pruned:cut;
  const cap=state.set.cap*1024,months=Object.keys(state.scores).sort();
- while(JSON.stringify(state).length>cap&&months.length)delete state.scores[months.shift()];
+ while(sizeOf(JSON.stringify(state))>cap&&months.length)delete state.scores[months.shift()];
 }
 let pending=null,snoozed=false;
 function runPruneCheck(manual){
@@ -695,7 +774,7 @@ function doArchive(p,auto){
 const ui={view:'day',date:today(),month:today().slice(0,7)};
 let undoSnap=null,toastTimer=0;
 function snapshot(){undoSnap=JSON.stringify(state);}
-function undo(){if(!undoSnap)return;state=JSON.parse(undoSnap);undoSnap=null;save();render();toast('Undone.');}
+function undo(){if(!undoSnap||locked)return;try{state=validate(JSON.parse(undoSnap));}catch(e){state=JSON.parse(undoSnap);}undoSnap=null;save();render();toast('Undone.');}
 function toast(msg,act){
  $('toast-msg').textContent=msg;const b=$('toast-act');
  if(act){b.textContent=act.label;b.hidden=false;b.onclick=()=>{$('toast').hidden=true;act.fn();};}else{b.hidden=true;b.onclick=null;}
@@ -724,6 +803,7 @@ function applyTheme(){
 function buildBackdrop(){let h='';for(let r=0;r<13;r++)for(let c=0;c<13;c++){const x=c*105+(r%2)*52,y=r*83,pts=[0,1,2,3,4,5].map(i=>{const a=(i*60+30)*Math.PI/180;return (x+56*Math.cos(a)).toFixed(1)+','+(y+56*Math.sin(a)).toFixed(1);}).join(' ');h+='<polygon class="tile" points="'+pts+'"/>';}$('backdrop').innerHTML=h;}
 function renderBackdrop(){const s=weekStats(monday(ui.date)),tiles=$('backdrop').children,n=Math.round(tiles.length*(s.total?s.done/s.total:0));for(let i=0;i<tiles.length;i++){const lit=(i*73)%tiles.length<n;tiles[i].classList.toggle('lit',lit);tiles[i].classList.toggle('blue',lit&&i%4===0);}}
 function renderBanner(extra){
+ if(locked||!state){$('banner').innerHTML='';return;}
  let h='';
  if(!storageOK)h+='<div class="banner"><strong>This browser is not letting the planner save.</strong> Changes will be lost when you close it. Use the Android app, or export a backup or HTML copy from Tools before closing.</div>';
  if(notice)h+='<div class="banner">'+esc(notice)+' <button class="btn sm ghost" data-dismiss-notice>OK</button></div>';
@@ -817,10 +897,11 @@ function renderTools(){
  document.querySelectorAll('input[name=clock]').forEach(r=>{r.checked=+r.value===state.set.clock;});
  document.querySelectorAll('input[name=sound]').forEach(r=>{r.checked=(r.value==='on')===state.set.sound;});
  $('set-scope').value=state.set.scope;$('set-keep').value=String(state.set.keep);$('set-cap').value=String(state.set.cap);$('set-old').value=state.set.old;$('set-ask').checked=state.set.ask;
- const json=JSON.stringify(state),bytes=new Blob([json]).size,cap=state.set.cap*1024,logged=Object.keys(state.days).length;
+ const json=JSON.stringify(state),bytes=lk?(lsGet(KEY)||'').length:new Blob([json]).size,cap=state.set.cap*1024,logged=Object.keys(state.days).length;
+ renderLockUI();
  let scored=0;for(const k in state.scores)scored+=state.scores[k].split(',').filter(Boolean).length;
  $('st-meter').firstChild.style.width=Math.min(100,bytes/cap*100).toFixed(1)+'%';
- $('st-usage').textContent='Using '+fmtBytes(bytes)+' of '+fmtBytes(cap)+' ('+Math.round(bytes/cap*100)+'%). Full details from '+longDate(detailStart())+'. '+logged+' day'+(logged===1?'':'s')+' with check marks'+(scored?', '+scored+' archived day scores':'')+'.'+(storageOK?'':' Saving is blocked in this browser.');
+ $('st-usage').textContent='Using '+fmtBytes(bytes)+' of '+fmtBytes(cap)+' ('+Math.round(bytes/cap*100)+'%). Full details from '+longDate(detailStart())+'. '+logged+' day'+(logged===1?'':'s')+' with check marks'+(scored?', '+scored+' archived day scores':'')+'.'+(lk?' Stored encrypted.':'')+(storageOK?'':' Saving is blocked in this browser.');
 }
 function render(){
  applyTheme();
@@ -874,12 +955,12 @@ function openTask(it,focus){
  const f=focus==='time'?$('ts-start'):$('ts-name');setTimeout(()=>{try{f.focus();if(focus==='time'&&f.showPicker)f.showPicker();}catch(x){}},60);
 }
 async function saveTask(){
- const t=$('ts-name').value.trim(),s=toMin($('ts-start').value),e=toMin($('ts-end').value),err=$('ts-error');
+ const t=clean1($('ts-name').value,120),s=toMin($('ts-start').value),e=toMin($('ts-end').value),err=$('ts-error');
  if(!t){err.textContent='Give the task a name.';$('ts-name').focus();return;}
  if(isNaN(s)||isNaN(e)){err.textContent='Choose a start and an end time.';return;}
  if(e<=s){err.textContent='The end time must be after the start time.';return;}
  const v={t,s,e,d:edit.d},it=edit.item,date=edit.date;
- if(!it){snapshot();const msg=addTask(date,v);save();$('task-sheet').close();renderDay();toast(msg,{label:'Undo',fn:undo});return;}
+ if(!it){const before=JSON.stringify(state);let msg;try{msg=addTask(date,v);}catch(x){err.textContent=x.message;return;}undoSnap=before;save();$('task-sheet').close();renderDay();toast(msg,{label:'Undo',fn:undo});return;}
  const daysChanged=it.kind==='once'?v.d!==0:v.d!==it.d,changed=t!==it.t||s!==it.s||e!==it.e;
  if(!changed&&!daysChanged){$('task-sheet').close();return;}
  let scope='after';
@@ -970,6 +1051,7 @@ const TIERS=[
 function tierOf(done,total){const p=pct({done,total});return {p,k:p===100?10:Math.floor(p/10)};}
 const canFinish=d=>{const s=stats(d);return !s.arch&&s.total>0&&d<=today();};
 function renderFinish(){
+ if(!state)return;
  const d=ui.date,b=$('finish-day'),show=canFinish(d);b.hidden=!show;if(!show)return;
  const f=(state.days[d]||{}).f,s=stats(d),t=tierOf(s.done,s.total);
  b.querySelector('.fb-main').textContent=f?'Replay result':'Finish day';
@@ -1149,6 +1231,107 @@ $('win-mute').onclick=()=>setSound(!state.set.sound);
 $('win').addEventListener('close',()=>{stopWin();renderFinish();});
 $('win-stage').addEventListener('scroll',()=>{if($('win').open)placeDeco();},{passive:true});
 window.addEventListener('resize',()=>{if($('win').open)placeDeco();});
+/* ---------- app lock ---------- */
+function passPrompt(o){
+ return new Promise(res=>{
+  const d=$('pass-dialog'),ok=$('pass-ok'),ids=['pass-cur','pass-new','pass-new2'];
+  $('pass-title').textContent=o.title;$('pass-body').textContent=o.body||'';
+  $('pass-cur-f').hidden=!o.cur;$('pass-new-f').hidden=!o.nw;$('pass-new2-f').hidden=!o.nw;
+  ids.forEach(i=>{$(i).value='';});$('pass-error').textContent='';
+  $('pass-hint').textContent=o.nw?'Use at least 6 characters. A longer passcode, or a few words together, is much harder to guess.':'';
+  ok.textContent=o.ok||'OK';ok.disabled=false;let done=false;
+  const err=m=>{$('pass-error').textContent=m;};
+  ok.onclick=async()=>{
+   const cur=$('pass-cur').value,nw=$('pass-new').value;
+   if(o.cur&&!cur)return err('Enter the passcode.');
+   if(o.nw){if(nw.length<6)return err('Use at least 6 characters.');if(nw!==$('pass-new2').value)return err('The new passcodes do not match.');}
+   const label=ok.textContent;ok.disabled=true;ok.textContent='Working...';
+   let e=null;try{e=await o.run(cur,nw);}catch(x){e='Something went wrong. Try again.';}
+   ok.disabled=false;ok.textContent=label;
+   if(e)return err(e);
+   done=true;d.close();
+  };
+  $('pass-cancel').onclick=()=>d.close();
+  d.onclose=()=>{d.onclose=null;ids.forEach(i=>{$(i).value='';});res(done);};
+  d.showModal();setTimeout(()=>{try{$(o.cur?'pass-cur':'pass-new').focus();}catch(x){}},50);
+ });
+}
+$('pass-form').addEventListener('submit',e=>{e.preventDefault();$('pass-ok').click();});
+function renderLockUI(){
+ const on=!!lk,cc=canCrypt();
+ $('lock-off-btns').hidden=on;$('lock-on-ui').hidden=!on;$('export-plain').hidden=!on;$('lock-enable').disabled=!cc;
+ $('lock-status').textContent=on?'On. Your planner is encrypted on this device.':cc?'Off. Anyone who can open this app on your phone can read your planner.':'Not available in this browser.';
+ $('set-lockafter').value=String(state.set.lockAfter);
+}
+function showLock(msg){
+ document.body.classList.add('is-locked');document.body.classList.remove('veil');
+ $('lock').hidden=false;$('lock-error').textContent=msg||'';$('lock-pass').value='';
+ setTimeout(()=>{try{$('lock-pass').focus();}catch(e){}},50);
+}
+function wipeScreen(){
+ ['day-hero','day-strip','day-list','view-week','view-month','banner','ts-suggest','day-count'].forEach(id=>{$(id).innerHTML='';});
+ document.querySelectorAll('[data-notes],#set-name,#ts-name,#ts-start,#ts-end').forEach(e=>{e.value='';});
+ $('rec-frame').srcdoc='';$('st-usage').textContent='';$('finish-day').hidden=true;$('toast').hidden=true;
+}
+async function lockNow(){
+ if(locked||!lk)return;
+ locked=true;
+ document.querySelectorAll('dialog[open]').forEach(d=>{try{d.close();}catch(e){}});
+ await flush();
+ const o=parseStored();
+ if(!isEnc(o)){locked=false;document.body.classList.remove('veil');toast('Could not lock: this device is not saving.');return;}
+ stopWin();lockedBlob=o;lk=null;state=null;edit=null;undoSnap=null;pending=null;
+ wipeScreen();showLock();
+}
+let fails=0,waitUntil=0;
+$('lock-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(!locked||!lockedBlob)return;
+ const left=waitUntil-Date.now();if(left>0){$('lock-error').textContent='Too many tries. Wait '+Math.ceil(left/1000)+' seconds.';return;}
+ const pass=$('lock-pass').value;if(!pass){$('lock-error').textContent='Enter your passcode.';return;}
+ const b=$('lock-go');b.disabled=true;b.textContent='Unlocking...';$('lock-error').textContent='';
+ let r=null;try{r=canCrypt()?await unseal(lockedBlob,pass):null;}catch(x){r=null;}
+ b.disabled=false;b.textContent='Unlock';
+ if(!r){fails++;if(fails>=5)waitUntil=Date.now()+Math.min(300000,30000*Math.pow(2,fails-5));$('lock-error').textContent=canCrypt()?'That passcode did not work.':'This browser cannot decrypt your data.';try{$('lock-pass').select();}catch(x){}return;}
+ let st;try{st=validate(JSON.parse(r.json));}catch(x){$('lock-error').textContent='Your data was decrypted but could not be read.';return;}
+ if(seedPid)st.pid=seedPid;
+ fails=0;waitUntil=0;state=st;lk=r.k;locked=false;lockedBlob=null;$('lock-pass').value='';
+ document.body.classList.remove('is-locked');$('lock').hidden=true;
+ start();
+});
+$('lock-forgot').onclick=async()=>{
+ if(!await ask({title:'Erase and start over?',body:'Without the passcode your planner cannot be decrypted. This erases everything Daily Missions stores on this device and starts fresh. Backups you exported are not touched, and an encrypted backup can still be restored if you remember its passcode.',ok:'Erase everything',danger:true}))return;
+ purgeLeftovers(true);lockedBlob=null;lk=null;locked=false;state=fresh();if(seedPid)state.pid=seedPid;
+ document.body.classList.remove('is-locked');$('lock').hidden=true;start();toast('Planner erased.');
+};
+$('lock-enable').onclick=async()=>{
+ if(!canCrypt())return;
+ const ok=await passPrompt({title:'Set a passcode',body:'Daily Missions will ask for this passcode when you open it, and everything it stores will be encrypted with it. Older unencrypted copies left by earlier versions are removed. There is no way to recover your data if you forget it.',nw:true,ok:'Turn on lock',run:async(cur,nw)=>{
+  await flush();lk=await newKey(nw);save();await flush();
+  if(!isEnc(parseStored())){lk=null;save();return 'This device is not saving, so the lock could not be turned on.';}
+  purgeLeftovers(false);return null;}});
+ if(ok){renderTools();toast('App lock is on.');}
+};
+$('lock-change').onclick=async()=>{
+ const ok=await passPrompt({title:'Change passcode',body:'Enter your current passcode, then the new one.',cur:true,nw:true,ok:'Change',run:async(cur,nw)=>{
+  await flush();const o=parseStored(),r=isEnc(o)?await unseal(o,cur):null;if(!r)return 'Your current passcode is not right.';
+  lk=await newKey(nw);save();await flush();return null;}});
+ if(ok)toast('Passcode changed.');
+};
+$('lock-disable').onclick=async()=>{
+ const ok=await passPrompt({title:'Turn off app lock',body:'Your planner will be stored without encryption on this device.',cur:true,ok:'Turn off',run:async cur=>{
+  await flush();const o=parseStored(),r=isEnc(o)?await unseal(o,cur):null;if(!r)return 'That passcode is not right.';
+  lk=null;save();return null;}});
+ if(ok){renderTools();toast('App lock is off.');}
+};
+$('lock-now').onclick=()=>lockNow();
+// Hide the planner while the app is in the background, and lock if it stayed away long enough.
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{
+ if(!lk||locked)return;
+ if(document.hidden){hiddenAt=Date.now();document.body.classList.add('veil');if(state.set.lockAfter===0)lockNow();}
+ else{const away=hiddenAt?Date.now()-hiddenAt:0;hiddenAt=0;if(away>=state.set.lockAfter*60000)lockNow();else document.body.classList.remove('veil');}
+});
+
 /* ---------- records and files ---------- */
 // mode 'dark' or 'light' pins the on-screen colors (app preview); without it the file follows the viewer's setting. Printing is always light.
 function reportHTML(ws,mode){
@@ -1162,7 +1345,7 @@ function reportHTML(ws,mode){
  const th=SHORT.map((n,i)=>'<th class="c">'+n+'<br><small>'+parse(addDays(ws,i)).getDate()+'</small></th>').join('');
  const body=list.length?list.map((r,k)=>'<tr'+(k%2?' class="alt"':'')+'><td class="time">'+esc(fmtRange(r.s,r.e))+'</td><td>'+esc(r.t)+'</td>'+r.cells.map(c=>'<td class="c">'+(c===1?'<span class="yes">&#10003;</span>':c===0?'<span class="no">&#9633;</span>':'')+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="9">Nothing scheduled this week.</td></tr>';
  const foot='<tr class="tot"><td colspan="2">Done</td>'+heads.map(s=>'<td class="c">'+(s.pre||(s.arch&&s.none)?'':s.total?s.done+'/'+s.total:'Rest')+'</td>').join('')+'</tr>';
- return '<!doctype html><html lang="en"'+(mode?' data-theme="'+mode+'"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>Daily Missions record '+ws+'</title><style>:root{color-scheme:light;--bg:#e8ecf0;--ink:#1f2b3a;--muted:#4b5b6d;--line:#c6cfda;--alt:#dfe4ea;--head:#243244;--hm:#b9c6d4;--tot:#f1e1bf;--yes:#9a5800;--no:#8494a6;--foot:#5d6d80;--notes:#dfe4ea}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}}:root[data-theme=dark]{color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}@media print{:root:root:root{color-scheme:light;--bg:#fff;--ink:#1f2b3a;--muted:#536477;--line:#d8e0e9;--alt:#f4f7fa;--head:#243244;--hm:#b9c6d4;--tot:#fff3dc;--yes:#c57400;--no:#9fafc0;--foot:#7a8898;--notes:#f4f7fa}}html{background:var(--bg)}body{font:14px/1.45 system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:24px auto;max-width:960px;padding:0 16px}.tag{display:inline-block;background:#ffac32;color:#182331;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 16px 4px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}h1{font-size:34px;font-style:italic;font-weight:900;margin:8px 0 2px;letter-spacing:-.02em;text-transform:uppercase}.sub{color:var(--muted);margin:0 0 14px}.rule{height:4px;background:linear-gradient(90deg,#ffac32 40%,var(--line) 40%);margin:0 0 18px}.sum{font-weight:800;margin:0 0 14px}table{width:100%;border-collapse:collapse}th{background:var(--head);color:#fff;text-align:left;padding:8px;font-size:12px;letter-spacing:.04em}th small{font-weight:600;color:var(--hm)}td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.alt td{background:var(--alt)}.c{text-align:center;width:44px}.time{white-space:nowrap;font-weight:700;color:var(--muted);width:120px;font-variant-numeric:tabular-nums}.yes{color:var(--yes);font-weight:900;font-size:16px}.no{color:var(--no);font-size:16px}tr.tot td{font-weight:800;background:var(--tot)}h2{font-size:15px;font-style:italic;text-transform:uppercase;margin:22px 0 8px}.notes{white-space:pre-wrap;background:var(--notes);padding:12px;border-radius:6px;margin:0}footer{margin-top:20px;color:var(--foot);font-size:11px}@media print{body{margin:0;font-size:10px}h1{font-size:24px}td,th{padding:4px}tr{break-inside:avoid}thead{display:table-header-group}}</style></head><body>'
+ return '<!doctype html><html lang="en"'+(mode?' data-theme="'+mode+'"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'"><meta name="color-scheme" content="light dark"><title>Daily Missions record '+ws+'</title><style>:root{color-scheme:light;--bg:#e8ecf0;--ink:#1f2b3a;--muted:#4b5b6d;--line:#c6cfda;--alt:#dfe4ea;--head:#243244;--hm:#b9c6d4;--tot:#f1e1bf;--yes:#9a5800;--no:#8494a6;--foot:#5d6d80;--notes:#dfe4ea}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}}:root[data-theme=dark]{color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}@media print{:root:root:root{color-scheme:light;--bg:#fff;--ink:#1f2b3a;--muted:#536477;--line:#d8e0e9;--alt:#f4f7fa;--head:#243244;--hm:#b9c6d4;--tot:#fff3dc;--yes:#c57400;--no:#9fafc0;--foot:#7a8898;--notes:#f4f7fa}}html{background:var(--bg)}body{font:14px/1.45 system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:24px auto;max-width:960px;padding:0 16px}.tag{display:inline-block;background:#ffac32;color:#182331;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 16px 4px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}h1{font-size:34px;font-style:italic;font-weight:900;margin:8px 0 2px;letter-spacing:-.02em;text-transform:uppercase}.sub{color:var(--muted);margin:0 0 14px}.rule{height:4px;background:linear-gradient(90deg,#ffac32 40%,var(--line) 40%);margin:0 0 18px}.sum{font-weight:800;margin:0 0 14px}table{width:100%;border-collapse:collapse}th{background:var(--head);color:#fff;text-align:left;padding:8px;font-size:12px;letter-spacing:.04em}th small{font-weight:600;color:var(--hm)}td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.alt td{background:var(--alt)}.c{text-align:center;width:44px}.time{white-space:nowrap;font-weight:700;color:var(--muted);width:120px;font-variant-numeric:tabular-nums}.yes{color:var(--yes);font-weight:900;font-size:16px}.no{color:var(--no);font-size:16px}tr.tot td{font-weight:800;background:var(--tot)}h2{font-size:15px;font-style:italic;text-transform:uppercase;margin:22px 0 8px}.notes{white-space:pre-wrap;background:var(--notes);padding:12px;border-radius:6px;margin:0}footer{margin-top:20px;color:var(--foot);font-size:11px}@media print{body{margin:0;font-size:10px}h1{font-size:24px}td,th{padding:4px}tr{break-inside:avoid}thead{display:table-header-group}}</style></head><body>'
  +'<span class="tag">WEEKLY RECORD</span><h1>Daily Missions</h1><p class="sub">'+esc(state.name||'Your week')+' · '+esc(weekRange(ws))+'</p><div class="rule"></div>'
  +'<p class="sum">'+w.done+' of '+w.total+' objectives done ('+pct(w)+'%)</p>'
  +'<table><thead><tr><th>Time</th><th>Objective</th>'+th+'</tr></thead><tbody>'+body+foot+'</tbody></table>'
@@ -1174,7 +1357,7 @@ function downloadRecord(ws){saveFile('Daily_Missions_Week_'+ws+'.html','text/htm
 function printRecord(ws){
  const html=reportHTML(ws);
  if(window.NativeFiles&&typeof NativeFiles.printHtml==='function'){try{NativeFiles.printHtml(html);return;}catch(e){}}
- const f=document.createElement('iframe');f.style.cssText='position:fixed;width:1px;height:1px;right:0;bottom:0;border:0;opacity:0';
+ const f=document.createElement('iframe');f.setAttribute('sandbox','allow-modals allow-same-origin');f.style.cssText='position:fixed;width:1px;height:1px;right:0;bottom:0;border:0;opacity:0';
  f.onload=()=>setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print();}catch(e){toast('Printing is not available here. Download the record instead.');}},150);
  f.srcdoc=html;document.body.appendChild(f);setTimeout(()=>f.remove(),60000);
 }
@@ -1185,10 +1368,11 @@ function saveFile(name,mime,content){
  toast('Download started. Check your Downloads folder.');
 }
 window.onNativeFileSaved=ok=>toast(ok?'File saved.':'The file was not saved.');
-function exportBackup(){save();saveFile('Daily_Missions_Backup_'+today()+'.json','application/json',JSON.stringify(state));}
-function saveHTML(){
- save();const packed=JSON.parse(JSON.stringify(state));packed.pid=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
- const json=JSON.stringify(packed).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+async function exportBackup(plain){save();const json=JSON.stringify(state);let out=json;if(lk&&!plain){try{out=await seal(json,lk,state.pid);}catch(e){toast('Could not encrypt the backup.');return;}}saveFile('Daily_Missions_Backup_'+today()+(lk&&!plain?'-encrypted':'')+'.json','application/json',out);}
+async function saveHTML(){
+ save();const packed=JSON.parse(JSON.stringify(state));packed.pid=randHex(8);
+ let data=JSON.stringify(packed);if(lk){try{data=await seal(data,lk,packed.pid);}catch(e){toast('Could not encrypt the copy.');return;}}
+ const json=data.replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
  const html=ORIGINAL.replace(/<script type="application\/json" id="initial-state">[\s\S]*?<\/script>/,()=>'<script type="application/json" id="initial-state">'+json+'<\/script>');
  saveFile('Daily_Missions_'+today()+'.html','text/html',html);
 }
@@ -1197,6 +1381,13 @@ async function readBackup(file){
  try{
   if(!file)return;if(file.size>8e6)throw Error('Choose a backup smaller than 8 MB.');
   let raw;try{raw=JSON.parse(await readText(file));}catch(e){throw Error('That file is not a backup.');}
+  if(isEnc(raw)){
+   if(!canCrypt())throw Error('this browser cannot open encrypted backups.');
+   let opened=null;
+   const ok=await passPrompt({title:'Encrypted backup',body:'Enter the passcode that was set when this backup was made.',cur:true,ok:'Open',run:async cur=>{const r=await unseal(raw,cur);if(!r)return 'That passcode did not work.';opened=r.json;return null;}});
+   if(!ok)return;
+   try{raw=JSON.parse(opened);}catch(e){throw Error('the backup is damaged.');}
+  }
   const next=validate(raw);if(state.pid)next.pid=state.pid;else delete next.pid;
   const n=Object.keys(next.days).length,tk=Object.keys(next.tasks).length;
   if(!await ask({title:'Restore backup?',body:'This backup has '+tk+' task'+(tk===1?'':'s')+' and '+n+' day'+(n===1?'':'s')+' of check marks. Restoring replaces everything in this planner on this device. Export a backup first if you want to keep what is here now.',ok:'Restore',danger:true}))return;
@@ -1293,12 +1484,13 @@ document.addEventListener('change',e=>{
  if(el.id==='set-keep'||el.id==='set-cap'){state.set[el.id==='set-keep'?'keep':'cap']=+el.value;save();renderTools();runPruneCheck(false);return;}
  if(el.id==='set-old'){state.set.old=el.value;save();renderBanner();return;}
  if(el.id==='set-ask'){state.set.ask=el.checked;save();return;}
+ if(el.id==='set-lockafter'){state.set.lockAfter=+el.value;save();return;}
 });
 let notesTimer=0;
 document.addEventListener('input',e=>{
  const el=e.target;
- if(el.hasAttribute('data-notes')){const ws=monday(ui.date);if(el.value)state.notes[ws]=el.value;else delete state.notes[ws];clearTimeout(notesTimer);notesTimer=setTimeout(save,350);return;}
- if(el.id==='set-name'){state.name=el.value.slice(0,60);save();return;}
+ if(el.hasAttribute('data-notes')){const ws=monday(ui.date),v=cleanML(el.value,6000);if(v)state.notes[ws]=v;else delete state.notes[ws];clearTimeout(notesTimer);notesTimer=setTimeout(save,350);return;}
+ if(el.id==='set-name'){state.name=clean1(el.value,60);save();return;}
  if(el.id==='ts-start'){const s=toMin(el.value),e2=toMin($('ts-end').value);if(!isNaN(s)&&!isNaN(e2)&&!isNaN(edit.prevStart)){const ne=Math.min(1439,Math.max(s+1,e2+(s-edit.prevStart)));$('ts-end').value=hhmm(ne);}edit.prevStart=s;sheetHints();return;}
  if(el.id==='ts-end'){sheetHints();}
 });
@@ -1306,16 +1498,18 @@ $('ts-form').addEventListener('submit',e=>{e.preventDefault();saveTask();});
 $('ts-save').onclick=saveTask;$('ts-delete').onclick=deleteTask;
 $('sort-time').onclick=()=>{snapshot();sortByTime(ui.date);save();renderList();toast('Sorted by start time.',{label:'Undo',fn:undo});};
 $('theme-btn').onclick=()=>{const o=OPT.theme,n=o[(o.indexOf(state.set.theme)+1)%o.length];state.set.theme=n;save();applyTheme();if(ui.view==='tools')renderTools();toast('Theme: '+n[0].toUpperCase()+n.slice(1)+'.');};
-$('export-backup').onclick=exportBackup;$('save-html').onclick=saveHTML;
+$('export-backup').onclick=()=>exportBackup(false);
+$('export-plain').onclick=async()=>{if(await ask({title:'Export without encryption?',body:'Anyone who gets this file can read your tasks and notes. Use it only if you need to open the backup somewhere without your passcode.',ok:'Export unencrypted'}))exportBackup(true);};$('save-html').onclick=saveHTML;
 $('import-backup').onclick=()=>$('backup-file').click();$('backup-file').onchange=()=>readBackup($('backup-file').files[0]);
 $('rec-this').onclick=()=>viewRecord(monday(today()));$('rec-dl-this').onclick=()=>downloadRecord(monday(today()));$('rec-print-this').onclick=()=>printRecord(monday(today()));
 $('rec-download').onclick=()=>downloadRecord(recWeek);$('rec-print').onclick=()=>printRecord(recWeek);
 $('st-check').onclick=()=>runPruneCheck(true);
-$('erase-all').onclick=async()=>{if(!await ask({title:'Erase all data?',body:'This deletes every task, check mark, note, and setting on this device and restores the starter routine. Export a backup first if you might want it back.',ok:'Erase everything',danger:true}))return;snapshot();const pid=state.pid;state=fresh();if(pid)state.pid=pid;save();ui.date=today();show('day');toast('Planner reset.',{label:'Undo',fn:undo});};
+$('erase-all').onclick=async()=>{if(!await ask({title:'Erase all data?',body:'This deletes every task, check mark, note, and setting on this device and restores the starter routine. Export a backup first if you might want it back.',ok:'Erase everything',danger:true}))return;const wasLocked=!!lk;if(!wasLocked)snapshot();else undoSnap=null;await flush();const pid=state.pid;purgeLeftovers(true);lk=null;state=fresh();if(pid)state.pid=pid;save();ui.date=today();show('day');if(wasLocked)toast('Planner reset and app lock turned off.');else toast('Planner reset.',{label:'Undo',fn:undo});};
 window.addEventListener('pagehide',()=>save());
-window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue&&e.newValue!==JSON.stringify(state))toast('The planner changed in another tab. Reload this page before making more changes.');});
+window.addEventListener('storage',e=>{if(!locked&&e.key===KEY&&e.newValue&&e.newValue!==lastWritten)toast('The planner changed in another tab. Reload this page before making more changes.');});
 let lastToday=today();
 function tick(){
+ if(locked||!state)return;
  const t=today();
  if(t!==lastToday){if(ui.date===lastToday)ui.date=t;lastToday=t;if(!drag&&!document.querySelector('dialog[open]'))render();return;}
  if(ui.view==='day'&&ui.date===t&&!drag){const n=nowMin();list.querySelectorAll('.task').forEach(r=>r.classList.toggle('now',n>=+r.dataset.s&&n<+r.dataset.e));}
@@ -1323,12 +1517,17 @@ function tick(){
 setInterval(tick,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
 
 /* ---------- start ---------- */
-buildBackdrop();render();renderBanner();
-if(storageOK)save();
-runPruneCheck(false);
+function start(){
+ ui.view='day';ui.date=today();lastToday=ui.date;
+ render();renderBanner();
+ if(storageOK)save();
+ runPruneCheck(false);
+ const nowRow=list.querySelector('.task.now');if(nowRow){const r=nowRow.getBoundingClientRect();if(r.bottom>window.innerHeight-navInset())nowRow.scrollIntoView({block:'center'});}
+}
+buildBackdrop();
+if(locked)showLock();else start();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
-const nowRow=list.querySelector('.task.now');if(nowRow){const r=nowRow.getBoundingClientRect();if(r.bottom>window.innerHeight-navInset())nowRow.scrollIntoView({block:'center'});}
-window.MM={get state(){return state;},validate,items,stats,archive,planPrune,tierOf,emblemSVG,TIERS,fxCount:()=>P.length};
+if(window.__MM_TEST__)window.MM={get state(){return state;},validate,items,stats,archive,planPrune,tierOf,emblemSVG,TIERS,fxCount:()=>P.length};
 })();
 </script>
 </body>

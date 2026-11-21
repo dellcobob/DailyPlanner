@@ -8,13 +8,16 @@ keeps stored entries 4-byte aligned, and signs with APK Signature Scheme v2.
   python3 build/build_apk.py --key signing/key.pem --cert signing/cert.pem
   python3 build/build_apk.py --new-key signing/   # first time: make a signing key
 
+The key may be a password-protected PEM; set DM_KEY_PASSWORD or type it when asked.
+
 Keep the key files private and reuse them for every update. Android only installs
 an update over the app when it is signed with the same key.
 """
-import argparse, datetime, hashlib, io, os, struct, sys, zipfile
+import argparse, datetime, getpass, hashlib, io, os, struct, sys, zipfile, zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import axml  # noqa: E402
+import csp  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 V2_BLOCK_ID = 0x7109871A
@@ -47,6 +50,28 @@ def make_key(folder):
     with open(cp, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
     return kp, cp
+
+
+# classes.dex from build/wrapper.apk, and the one instruction we change in it:
+# MainActivity.onCreate calls WebSettings.setAllowContentAccess(v3) where v3 == true.
+# Switching the register to v4 (which holds false at that point) turns content:// access off.
+WRAPPER_DEX_SHA256 = 'd2242f9b231ac1b3390043a459b3d4b1a2227b6c2e3527d3a7229efbbe0ed438'
+CONTENT_ACCESS_AT = 7892
+CONTENT_ACCESS_BEFORE = bytes.fromhex('6e202a003700')  # invoke-virtual {v7, v3}, WebSettings.setAllowContentAccess
+CONTENT_ACCESS_AFTER = bytes.fromhex('6e202a004700')   # invoke-virtual {v7, v4}
+
+
+def harden_dex(data):
+    if hashlib.sha256(data).hexdigest() != WRAPPER_DEX_SHA256:
+        raise SystemExit('classes.dex is not the known wrapper build; refusing to patch it')
+    d = bytearray(data)
+    at = CONTENT_ACCESS_AT
+    if bytes(d[at:at + 6]) != CONTENT_ACCESS_BEFORE:
+        raise SystemExit('unexpected instruction in classes.dex')
+    d[at:at + 6] = CONTENT_ACCESS_AFTER
+    d[12:32] = hashlib.sha1(bytes(d[32:])).digest()                    # dex signature
+    struct.pack_into('<I', d, 8, zlib.adler32(bytes(d[12:])) & 0xffffffff)  # dex checksum
+    return bytes(d)
 
 
 def patch_manifest(data, code, name, label=None):
@@ -83,6 +108,8 @@ def build_zip(base, html, code, name, label=None):
             data = html
         elif fn == 'AndroidManifest.xml':
             data = patch_manifest(data, code, name, label)
+        elif fn == 'classes.dex':
+            data = harden_dex(data)
         zi = zipfile.ZipInfo(fn, date_time=(1981, 1, 1, 1, 1, 2))
         zi.compress_type = info.compress_type
         zi.external_attr = info.external_attr
@@ -110,7 +137,12 @@ def sign_v2(apk, key_pem, cert_pem):
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import padding
-    key = serialization.load_pem_private_key(key_pem, password=None)
+    password = os.environ.get('DM_KEY_PASSWORD')
+    try:
+        key = serialization.load_pem_private_key(key_pem, password=password.encode() if password else None)
+    except TypeError:
+        # The key file is encrypted: ask for its password.
+        key = serialization.load_pem_private_key(key_pem, password=getpass.getpass('Signing key password: ').encode())
     cert = x509.load_pem_x509_certificate(cert_pem)
     cert_der = cert.public_bytes(serialization.Encoding.DER)
     pub_der = cert.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
@@ -139,8 +171,8 @@ def main():
     ap.add_argument('--out', default=os.path.join(ROOT, 'Daily_Missions_Android.apk'))
     ap.add_argument('--key'); ap.add_argument('--cert')
     ap.add_argument('--new-key', metavar='FOLDER', help='create key.pem and cert.pem in FOLDER, then build')
-    ap.add_argument('--version-code', type=int, default=4)
-    ap.add_argument('--version-name', default='2.2.0')
+    ap.add_argument('--version-code', type=int, default=6)
+    ap.add_argument('--version-name', default='2.3.0')
     ap.add_argument('--label', default='Daily Missions', help='app name shown on the home screen')
     a = ap.parse_args()
     if a.new_key:
@@ -150,6 +182,8 @@ def main():
         ap.error('pass --key and --cert, or --new-key FOLDER')
     with open(a.html, 'rb') as f:
         html = f.read()
+    if csp.expected(html.decode('utf-8')) != csp.current(html.decode('utf-8')):
+        raise SystemExit('The Content-Security-Policy in the HTML is out of date. Run: python3 build/csp.py')
     unsigned = build_zip(a.base, html, a.version_code, a.version_name, a.label)
     with open(a.key, 'rb') as k, open(a.cert, 'rb') as c:
         apk = sign_v2(unsigned, k.read(), c.read())

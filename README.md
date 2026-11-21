@@ -46,9 +46,19 @@ Everything is saved on the device as compact JSON (about 100 bytes per day). In 
 
 **Tools > Backups** has Export backup (.json), Restore backup, and Save HTML copy. **Weekly records** download or print a readable week, laid out like the printed schedule. On screen they match your theme (and a downloaded record follows the viewer's light or dark setting); printing is always on white. Restore also reads backups from the older Morning Missions tracker.
 
+## Security and privacy
+
+- **Nothing leaves your phone.** The Android app has no internet permission at all, and the page's Content Security Policy blocks every network connection, so even a bug could not send your data anywhere. There are no accounts, ads, or analytics.
+- **Optional app lock (Tools > App lock).** Set a passcode and everything Daily Missions stores is encrypted with AES-256-GCM, using a key made from your passcode with PBKDF2-SHA256 (600,000 rounds). Backups and HTML copies are encrypted too. It locks again after you leave the app (right away, or after 1 to 60 minutes), hides the planner while the app is in the background, and slows down repeated wrong guesses. There is no way to recover a forgotten passcode, so keep a backup.
+- **Only the app's own code runs.** The policy allows just the two scripts the page ships with (checked by hash). Weekly records, previews, and downloaded record files can never run scripts, and everything you type is shown as plain text.
+- **Backups are checked before use.** Restore refuses damaged or oversized files, ignores unexpected fields, and strips invisible characters that can disguise text.
+- **Android app hardening.** No permissions, no other components, backups to the cloud off, cleartext traffic off, file and content access off, it only ever loads its own page, and it refuses all navigation.
+
+What the lock cannot cover: someone who knows or watches your passcode, a phone that is already compromised, screenshots or the recent-apps preview, and unencrypted backups you choose to export. Without the lock, Android still keeps the app's data private from other apps; if you use the HTML file in a browser instead, other local pages opened in that same browser could read it, so prefer the Android app or turn the lock on.
+
 ## Installing on Android
 
-If you already have Daily Missions 2.x (or Morning Missions 2.x), install the new APK over it. Your data stays.
+If you already have Daily Missions 2.x, install the new APK over it. Your data stays.
 
 Coming from the original Morning Missions 1.0 app, do this once, because 1.0 was signed with a different key:
 
@@ -63,5 +73,7 @@ Coming from the original Morning Missions 1.0 app, do this once, because 1.0 was
 - Rebuild the APK after editing the HTML:
   `python3 build/build_apk.py --key path/to/key.pem --cert path/to/cert.pem --version-code N --version-name X.Y.Z`
   The script swaps the HTML into `build/wrapper.apk` (the native shell), sets the home-screen name (`--label`), and signs with APK Signature Scheme v2. It needs Python 3 with the `cryptography` package.
-- The signing key is not in this repository. Keep it private and reuse it for every update.
+- After editing the HTML, run `python3 build/csp.py` to refresh the script hashes in the Content Security Policy. The APK build refuses to run if they are out of date, and the tests check them too.
+- The build turns off the WebView's content:// access by patching one instruction in the known `classes.dex` from `build/wrapper.apk` (it refuses to patch any other file).
+- The signing key is not in this repository. Keep it private and reuse it for every update. It can be a password-protected PEM (set `DM_KEY_PASSWORD` or type it when asked); for example `openssl pkcs8 -topk8 -v2 aes-256-cbc -in key.pem -out key-protected.pem`.
 - Saved data still uses the `morning-missions-v3` storage key and the app keeps the package id `com.morningmissions.tracker`, so updates keep existing data.

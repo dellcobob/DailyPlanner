@@ -24,14 +24,32 @@ async function open(opts = {}) {
   });
   await ctx.clock.install({ time: opts.now || NOW });
   await ctx.clock.resume();
-  if (opts.init) await ctx.addInitScript(opts.init);
+  if (opts.test !== false) await ctx.addInitScript('window.__MM_TEST__ = true');
+  if (opts.init) await ctx.addInitScript('try{if(window.top===window){' + opts.init + '\n}}catch(e){}');
   const p = await ctx.newPage();
   p.on('pageerror', e => errors.push('pageerror: ' + e.message));
   await p.goto(opts.url || URL);
-  await p.waitForSelector('#day-list .task, #day-list .empty');
+  await p.waitForSelector('#day-list .task, #day-list .empty, #lock:not([hidden])');
   return { ctx, p };
 }
 const S = p => p.evaluate(() => JSON.parse(JSON.stringify(window.MM.state)));
+const stored = p => p.evaluate(() => localStorage.getItem('morning-missions-v3'));
+async function restoreFile(p, name, obj) {
+  const file = path.join(TMP, name); fs.writeFileSync(file, typeof obj === 'string' ? obj : JSON.stringify(obj));
+  await tab(p, 'tools'); await p.setInputFiles('#backup-file', file); return file;
+}
+async function setPasscode(p, code) {
+  await tab(p, 'tools'); await p.click('#lock-enable');
+  await p.fill('#pass-new', code); await p.fill('#pass-new2', code);
+  await p.click('#pass-ok');
+  await p.waitForFunction(() => !document.querySelector('dialog[open]'), null, { timeout: 15000 });
+}
+async function unlock(p, code) {
+  await p.fill('#lock-pass', code); await p.click('#lock-go');
+}
+async function hideApp(p, hidden) {
+  await p.evaluate(h => { Object.defineProperty(document, 'hidden', { get: () => h, configurable: true }); Object.defineProperty(document, 'visibilityState', { get: () => h ? 'hidden' : 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }, hidden);
+}
 const top = p => p.evaluate(() => window.scrollTo(0, 0));
 const titles = p => p.$$eval('#day-list .task .task-title', els => els.map(e => e.textContent));
 const times = p => p.$$eval('#day-list .task .task-time', els => els.map(e => e.textContent));
@@ -57,6 +75,7 @@ async function choose(p, sel) {
 }
 
 async function test(name, fn) {
+  if (process.env.ONLY && !name.includes(process.env.ONLY)) return;
   try { await fn(); passed++; console.log('  ok   ' + name); }
   catch (e) { failed++; console.log('  FAIL ' + name + '\n       ' + (e && e.stack || e).toString().split('\n').slice(0, 4).join('\n       ')); }
 }
@@ -605,6 +624,213 @@ async function test(name, fn) {
     });
     await p.reload(); await p.waitForSelector('#day-list .task');
     assert.equal(await p.evaluate(() => window.__themeAtBody), 'dark');
+    await ctx.close();
+  });
+
+  await test('security: the content policy matches the scripts and blocks network and injected code', async () => {
+    const html = fs.readFileSync(FILE, 'utf8');
+    const hash = id => "'sha256-" + require('crypto').createHash('sha256').update(html.match(new RegExp('<script id="' + id + '">([\\s\\S]*?)</script>'))[1]).digest('base64') + "'";
+    const meta = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)">/)[1];
+    assert.ok(meta.includes(hash('theme-boot')) && meta.includes(hash('app')), 'policy lists the current script hashes (run build/csp.py)');
+    assert.match(meta, /default-src 'none'/); assert.match(meta, /connect-src 'none'/);
+    const { ctx, p } = await open();
+    const r = await p.evaluate(async () => {
+      const seen = []; document.addEventListener('securitypolicyviolation', e => seen.push(e.violatedDirective));
+      const net = await fetch('https://example.com/steal').then(() => 'sent', () => 'blocked');
+      const sc = document.createElement('script'); sc.textContent = 'window.__pwned = 1'; document.body.appendChild(sc);
+      await new Promise(r => setTimeout(r, 50));
+      return { net, pwned: window.__pwned, seen };
+    });
+    assert.equal(r.net, 'blocked'); assert.equal(r.pwned, undefined, 'an injected inline script does not run');
+    assert.ok(r.seen.includes('connect-src') && r.seen.some(d => d.startsWith('script-src')), 'violations: ' + r.seen);
+    await ctx.close();
+  });
+
+  await test('security: hostile text in tasks, names and notes is shown as text, never run', async () => {
+    const evil = '<img src=x onerror="window.__xss=1">';
+    const { ctx, p } = await open();
+    await p.click('#add-row'); await p.fill('#ts-name', evil); await p.click('#ts-save');
+    await tab(p, 'tools'); await p.fill('#set-name', '<script>window.__xss=2</script>');
+    await tab(p, 'day'); await p.evaluate(() => { document.querySelector('.notes-box').open = true; });
+    await p.fill('.notes-box textarea', '</textarea><svg onload="window.__xss=3">');
+    assert.ok((await titles(p)).includes(evil));
+    assert.equal(await p.locator('#day-list img, #day-list svg[onload]').count(), 0);
+    await p.click('#add-row'); await p.locator('#ts-name').pressSequentially('<img');
+    assert.equal(await p.locator('#ts-suggest img').count(), 0); await p.click('#task-sheet .sheet-foot [data-close]');
+    await tab(p, 'week'); assert.equal(await p.locator('#view-week img').count(), 0);
+    await p.click('[data-record="2026-11-16"]');
+    const f = p.frameLocator('#rec-frame'); await f.locator('table').waitFor();
+    assert.ok((await f.locator('tbody').textContent()).includes(evil));
+    assert.equal(await f.locator('img').count(), 0);
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#rec-download')]);
+    const rec = path.join(TMP, 'evil-record.html'); await dl.saveAs(rec);
+    const recHtml = fs.readFileSync(rec, 'utf8');
+    assert.ok(recHtml.includes('&lt;img src=x onerror=&quot;window.__xss=1&quot;&gt;') && !recHtml.includes(evil));
+    assert.match(recHtml, /Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"/);
+    await p.click('#record-dialog .sheet-head [data-close]');
+    await tab(p, 'tools');
+    const [dl2] = await Promise.all([p.waitForEvent('download'), p.click('#save-html')]);
+    const copy = path.join(TMP, 'evil-copy.html'); await dl2.saveAs(copy);
+    assert.equal(await p.evaluate(() => window.__xss), undefined);
+    await ctx.close();
+    const c2 = await open({ url: 'file://' + copy });
+    assert.ok((await titles(c2.p)).includes(evil));
+    assert.equal(await c2.p.evaluate(() => window.__xss), undefined, 'the HTML copy does not run injected code');
+    assert.equal((fs.readFileSync(copy, 'utf8').match(/<script\b/g) || []).length, 3 + 2, 'only the shipped scripts (plus two quoted in the app code)');
+    await c2.ctx.close();
+  });
+
+  await test('security: hostile or oversized backups are rejected or cleaned', async () => {
+    const { ctx, p } = await open();
+    const base = await S(p);
+    const tryRestore = async (name, obj) => {
+      await restoreFile(p, name, obj);
+      const ok = await p.waitForSelector('#ask-dialog[open]', { timeout: 1500 }).then(() => true, () => false);
+      if (ok) await choose(p, '#ask-ok');
+      return { ok, toast: await p.textContent('#toast-msg') };
+    };
+    let r = await tryRestore('proto.json', '{"v":3,"tasks":{},"__proto__":{"polluted":1},"set":{"__proto__":{"polluted":1},"theme":"dark"}}');
+    assert.equal(r.ok, true);
+    assert.equal(await p.evaluate(() => ({}).polluted), undefined, 'no prototype pollution');
+    r = await tryRestore('ctor.json', { v: 3, tasks: { constructor: { o: 1, h: [{ f: '2026-01-01', t: 'Gym\u202Eevil\u0007', s: 60, e: 120, d: 127 }] } } });
+    assert.equal(r.ok, true);
+    await tab(p, 'day');
+    assert.deepEqual(await titles(p), ['Gymevil'], 'odd ids work and hidden control characters are stripped');
+    r = await tryRestore('days-proto.json', { v: 3, tasks: base.tasks, days: JSON.parse('{"__proto__":{"c":["0"]}}') });
+    assert.equal(r.ok, false); assert.match(r.toast, /Could not restore/);
+    const many = {}; for (let i = 0; i < 1001; i++) many[i.toString(36)] = { o: i, h: [{ f: '2026-01-01', t: 'T' + i, s: 60, e: 90, d: 1 }] };
+    r = await tryRestore('many.json', { v: 3, tasks: many });
+    assert.equal(r.ok, false); assert.match(r.toast, /too many tasks/);
+    r = await tryRestore('seq.json', { v: 3, tasks: base.tasks, seq: 1e300 });
+    assert.equal(r.ok, false);
+    r = await tryRestore('slow.json', { dm: 'enc1', kdf: 'PBKDF2-SHA256', it: 1e9, salt: 'AAAAAAAAAAAAAAAAAAAAAA==', iv: 'AAAAAAAAAAAAAAAA', ct: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' });
+    assert.equal(r.ok, false, 'an encrypted backup with absurd key-stretching settings is refused');
+    assert.equal(await p.isVisible('#pass-dialog'), false);
+    await ctx.close();
+  });
+
+  await test('security: refuses to run inside another page, and hides the test hook', async () => {
+    const wrap = path.join(TMP, 'frame.html');
+    fs.writeFileSync(wrap, '<!doctype html><iframe id="f" src="' + URL + '" width="400" height="600"></iframe>');
+    const ctx = await browser.newContext(); const p = await ctx.newPage(); await p.goto('file://' + wrap);
+    const fr = p.frameLocator('#f'); await fr.locator('body').waitFor();
+    assert.match(await fr.locator('body').textContent(), /Open Daily Missions directly/);
+    assert.equal(await fr.locator('#day-list .task').count(), 0);
+    const q = await ctx.newPage(); await q.goto(URL); await q.waitForSelector('#day-list .task, #day-list .empty');
+    assert.equal(await q.evaluate(() => typeof window.MM), 'undefined');
+    await ctx.close();
+  });
+
+  await test('app lock: encrypts everything and asks for the passcode', async () => {
+    const { ctx, p } = await open();
+    await p.locator('#day-list .task input').first().check();
+    await setPasscode(p, 'correct horse');
+    assert.match(await p.textContent('#lock-status'), /^On\./);
+    const raw = await stored(p);
+    const blob = JSON.parse(raw);
+    assert.equal(blob.dm, 'enc1'); assert.equal(blob.it, 600000);
+    assert.ok(!/Yoga|Coffee|"c"/.test(raw), 'nothing readable is stored');
+    await p.reload(); await p.waitForSelector('#lock:not([hidden])');
+    assert.equal(await p.isVisible('#main'), false);
+    assert.equal(await p.locator('.task').count(), 0);
+    assert.equal(await p.evaluate(() => window.MM.state), null);
+    await unlock(p, 'wrong one');
+    await p.waitForFunction(() => /did not work/.test(document.getElementById('lock-error').textContent), null, { timeout: 15000 });
+    await unlock(p, 'correct horse');
+    await p.waitForSelector('#day-list .task', { timeout: 15000 });
+    assert.equal(await p.locator('#day-list .task input').first().isChecked(), true);
+    assert.equal(await p.isVisible('#lock'), false);
+    await p.locator('#day-list .task input').nth(1).check();
+    await p.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('morning-missions-v3')).dm === 'enc1'; } catch (e) { return false; } });
+    await p.reload(); await p.waitForSelector('#lock:not([hidden])');
+    await unlock(p, 'correct horse'); await p.waitForSelector('#day-list .task', { timeout: 15000 });
+    assert.equal(await p.locator('#day-list .task input').nth(1).isChecked(), true, 'changes made while unlocked are saved encrypted');
+    await ctx.close();
+  });
+
+  await test('app lock: locks again after leaving the app, and wipes the screen', async () => {
+    const { ctx, p } = await open();
+    await setPasscode(p, 'swordfish42');
+    await hideApp(p, true); await hideApp(p, false);
+    assert.equal(await p.isVisible('#lock'), false, 'a quick switch away does not lock (1 minute default)');
+    await p.selectOption('#set-lockafter', '0');
+    await tab(p, 'day'); await p.evaluate(() => { document.querySelector('.notes-box').open = true; }); await p.fill('.notes-box textarea', 'private note');
+    await hideApp(p, true);
+    await p.waitForSelector('#lock:not([hidden])');
+    assert.equal(await p.locator('.task').count(), 0);
+    assert.ok(!(await p.content()).includes('private note'), 'nothing personal is left in the page');
+    await hideApp(p, false);
+    await unlock(p, 'swordfish42'); await p.waitForSelector('#day-list .task', { timeout: 15000 });
+    await tab(p, 'tools'); await p.click('#lock-now');
+    await p.waitForSelector('#lock:not([hidden])');
+    await ctx.close();
+  });
+
+  await test('app lock: encrypted backups and HTML copies need the passcode', async () => {
+    const { ctx, p } = await open();
+    await tab(p, 'tools'); await p.fill('#set-name', 'Locked Owner');
+    await setPasscode(p, 'tango-delta');
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#export-backup')]);
+    assert.match(dl.suggestedFilename(), /-encrypted\.json$/);
+    const bfile = path.join(TMP, 'enc-backup.json'); await dl.saveAs(bfile);
+    const btext = fs.readFileSync(bfile, 'utf8');
+    assert.equal(JSON.parse(btext).dm, 'enc1'); assert.ok(!btext.includes('Locked Owner'));
+    const [dl2] = await Promise.all([p.waitForEvent('download'), p.click('#save-html')]);
+    const cfile = path.join(TMP, 'enc-copy.html'); await dl2.saveAs(cfile);
+    assert.ok(!fs.readFileSync(cfile, 'utf8').includes('Locked Owner'));
+    p.once('download', () => {});
+    await p.click('#export-plain'); assert.equal(await p.isVisible('#ask-dialog'), true, 'unencrypted export asks first'); await choose(p, '#ask-cancel');
+    await ctx.close();
+    const c2 = await open();
+    await restoreFile(c2.p, 'enc-backup.json', btext);
+    await c2.p.waitForSelector('#pass-dialog[open]');
+    await c2.p.fill('#pass-cur', 'nope'); await c2.p.click('#pass-ok');
+    await c2.p.waitForFunction(() => /did not work/.test(document.getElementById('pass-error').textContent), null, { timeout: 15000 });
+    await c2.p.fill('#pass-cur', 'tango-delta'); await c2.p.click('#pass-ok');
+    await c2.p.waitForSelector('#ask-dialog[open]', { timeout: 15000 }); await choose(c2.p, '#ask-ok');
+    assert.equal((await S(c2.p)).name, 'Locked Owner');
+    await c2.ctx.close();
+    const c3 = await open({ url: 'file://' + cfile });
+    await c3.p.waitForSelector('#lock:not([hidden])');
+    await unlock(c3.p, 'tango-delta'); await c3.p.waitForSelector('#day-list .task', { timeout: 15000 });
+    assert.equal((await S(c3.p)).name, 'Locked Owner');
+    await c3.ctx.close();
+  });
+
+  await test('app lock: change the passcode, turn it off, and forgotten-passcode reset', async () => {
+    const { ctx, p } = await open();
+    await setPasscode(p, 'first-code');
+    await p.click('#lock-change');
+    await p.fill('#pass-cur', 'not-it'); await p.fill('#pass-new', 'second-code'); await p.fill('#pass-new2', 'second-code'); await p.click('#pass-ok');
+    await p.waitForFunction(() => /not right/.test(document.getElementById('pass-error').textContent), null, { timeout: 15000 });
+    await p.fill('#pass-cur', 'first-code'); await p.click('#pass-ok');
+    await p.waitForFunction(() => !document.querySelector('dialog[open]'), null, { timeout: 15000 });
+    await p.reload(); await p.waitForSelector('#lock:not([hidden])');
+    await unlock(p, 'first-code');
+    await p.waitForFunction(() => /did not work/.test(document.getElementById('lock-error').textContent), null, { timeout: 15000 });
+    await unlock(p, 'second-code'); await p.waitForSelector('#day-list .task', { timeout: 15000 });
+    await tab(p, 'tools'); await p.click('#lock-disable');
+    await p.fill('#pass-cur', 'second-code'); await p.click('#pass-ok');
+    await p.waitForFunction(() => !document.querySelector('dialog[open]'), null, { timeout: 15000 });
+    assert.equal(JSON.parse(await stored(p)).v, 3, 'stored without encryption again');
+    await setPasscode(p, 'third-code');
+    await p.reload(); await p.waitForSelector('#lock:not([hidden])');
+    for (let i = 0; i < 5; i++) { await unlock(p, 'bad' + i); await p.waitForFunction(() => !document.getElementById('lock-go').disabled, null, { timeout: 15000 }); }
+    await unlock(p, 'third-code');
+    assert.match(await p.textContent('#lock-error'), /Too many tries/);
+    await p.click('#lock-forgot'); await choose(p, '#ask-ok');
+    await p.waitForSelector('#day-list .task');
+    assert.equal(JSON.parse(await stored(p)).v, 3);
+    assert.equal(await p.isVisible('#lock'), false);
+    await ctx.close();
+  });
+
+  await test('erase all also removes leftover copies', async () => {
+    const { ctx, p } = await open({ init: "if(!sessionStorage.getItem('s')){sessionStorage.setItem('s','1');localStorage.setItem('morning-missions-v3-unreadable-1','old');}" });
+    await p.evaluate(() => localStorage.setItem('morning-missions-v2', '{}'));
+    await tab(p, 'tools'); await p.click('#erase-all'); await choose(p, '#ask-ok');
+    const keys = await p.evaluate(() => Object.keys(localStorage));
+    assert.ok(!keys.some(k => /unreadable|missions-v2/.test(k)), 'keys left: ' + keys);
     await ctx.close();
   });
 
