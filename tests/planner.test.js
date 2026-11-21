@@ -543,6 +543,42 @@ async function test(name, fn) {
     await ctx.close();
   });
 
+  await test('Tools can preview any medal without saving', async () => {
+    const { ctx, p } = await open();
+    await tab(p, 'tools');
+    assert.equal(await p.locator('#tier-preview option').count(), 11);
+    await p.selectOption('#tier-preview', '8'); await p.click('#tier-play');
+    await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-name'), 'Ace');
+    assert.match(await p.textContent('#win-sub'), /Preview only/);
+    await p.click('#win-stage', { position: { x: 20, y: 20 } });
+    assert.equal(await p.textContent('#win-pct'), '85%');
+    await p.click('#win-close');
+    assert.equal((await S(p)).days['2026-11-20'], undefined, 'nothing was recorded');
+    await ctx.close();
+  });
+
+  await test('each medal has its own sound, and none of them distort', async () => {
+    const { ctx, p } = await open();
+    const r = await p.evaluate(async () => { const out = []; for (let k = 0; k < 11; k++) out.push(await window.MM.renderTier(k)); return out; });
+    r.forEach((x, k) => {
+      assert.ok(x.peak > 0.05, 'medal ' + (k + 1) + ' makes sound (peak ' + x.peak.toFixed(3) + ')');
+      assert.ok(x.peak <= 1, 'medal ' + (k + 1) + ' does not clip (peak ' + x.peak.toFixed(3) + ')');
+      assert.ok(x.seconds > 0.6 && x.seconds < 4.5, 'medal ' + (k + 1) + ' length ' + x.seconds.toFixed(2) + 's');
+    });
+    const sig = x => x.env.map((e, i) => e * 1000 + x.zc[i] / 10);
+    let worst = 0;
+    for (let a = 0; a < 11; a++) for (let b = a + 1; b < 11; b++) {
+      const A = sig(r[a]), B = sig(r[b]); let dot = 0, na = 0, nb = 0;
+      for (let i = 0; i < A.length; i++) { dot += A[i] * B[i]; na += A[i] * A[i]; nb += B[i] * B[i]; }
+      const sim = dot / Math.sqrt(na * nb); worst = Math.max(worst, sim);
+      assert.ok(sim < 0.985, 'medals ' + (a + 1) + ' and ' + (b + 1) + ' sound too alike');
+    }
+    assert.ok(r[10].seconds > r[0].seconds, 'Legend lasts longer than Recruit');
+    console.log('       closest pair similarity ' + worst.toFixed(3) + ' | lengths (s): ' + r.map(x => x.seconds.toFixed(1)).join(' ') + ' | peaks: ' + r.map(x => x.peak.toFixed(2)).join(' '));
+    await ctx.close();
+  });
+
   await test('reduced motion shows the result card without effects', async () => {
     const { ctx, p } = await open();
     await p.emulateMedia({ reducedMotion: 'reduce' });

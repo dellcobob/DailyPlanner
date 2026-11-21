@@ -2,7 +2,7 @@
 <html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-BHRRPd8PMpcUP/fKBd5BL2ChEWD0rmf3tNYpjottTWk='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-hpoRm03znfPY3zX2ZTOrkNShz9eEX+qwM35evFbURUM='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#182331">
@@ -336,6 +336,7 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
     <div class="field"><span>Theme</span><div class="seg" role="radiogroup" aria-label="Theme"><label><input type="radio" name="theme" value="auto"><span>Auto</span></label><label><input type="radio" name="theme" value="light"><span>Light</span></label><label><input type="radio" name="theme" value="dark"><span>Dark</span></label></div></div>
     <div class="field"><span>Clock</span><div class="seg" role="radiogroup" aria-label="Clock"><label><input type="radio" name="clock" value="12"><span>12-hour</span></label><label><input type="radio" name="clock" value="24"><span>24-hour</span></label></div></div>
     <div class="field"><span>Sound effects</span><div class="seg" role="radiogroup" aria-label="Sound effects"><label><input type="radio" name="sound" value="on"><span>On</span></label><label><input type="radio" name="sound" value="off"><span>Off</span></label></div></div>
+    <div class="field"><label for="tier-preview">Preview a medal</label><div style="display:flex;gap:8px"><select id="tier-preview" class="input"></select><button class="btn ghost" id="tier-play" type="button">Play</button></div></div>
    </section>
    <section class="card"><h2>Repeating tasks</h2><label class="field">When you change or remove one<select id="set-scope" class="input"><option value="ask">Ask each time</option><option value="day">Change only that day</option><option value="after">Change that day and later days</option></select></label><p class="hint">Past days always keep the tasks they had. Dragging to reorder applies to every day that shares those tasks.</p></section>
    <section class="card wide"><h2>Storage on this device</h2>
@@ -1212,25 +1213,41 @@ function audio(){
 // Every tap while the audio engine isn't running wakes it with a silent blip, so Finish day always has sound.
 function wakeAudio(){if(AC&&AC.state==='running')return;const ac=audio();if(!ac)return;try{const b=ac.createBuffer(1,1,22050),src=ac.createBufferSource();src.buffer=b;src.connect(ac.destination);src.start(0);}catch(e){}}
 ['pointerup','touchend','keydown'].forEach(t=>document.addEventListener(t,wakeAudio,{passive:true,capture:true}));
-function sTone(t,f,d,type,g,f2){const o=AC.createOscillator(),v=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+.012);v.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(v);v.connect(AM);o.start(t);o.stop(t+d+.05);}
-function sNoise(t,d,g,f1,f2,qv){if(!NB){NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const a=NB.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1;}const s=AC.createBufferSource();s.buffer=NB;const f=AC.createBiquadFilter();f.type='bandpass';f.Q.value=qv||1.2;f.frequency.setValueAtTime(f1,t);f.frequency.exponentialRampToValueAtTime(f2,t+d);const v=AC.createGain();v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+d*.35);v.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(v);v.connect(AM);s.start(t);s.stop(t+d+.05);}
+// Small synth kit. Every sound is generated here; nothing is loaded from a file.
+function out(pan){if(pan&&AC.createStereoPanner){const p=AC.createStereoPanner();p.pan.value=pan;p.connect(AM);return p;}return AM;}
+function sTone(t,f,d,type,g,f2,att,pan){const o=AC.createOscillator(),v=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+(att||.012));v.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(v);v.connect(out(pan));o.start(t);o.stop(t+d+.05);}
+function sNoise(t,d,g,f1,f2,qv,ft,pan){if(!NB){NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const a=NB.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1;}const s=AC.createBufferSource();s.buffer=NB;s.loop=true;const f=AC.createBiquadFilter();f.type=ft||'bandpass';f.Q.value=qv||1.2;f.frequency.setValueAtTime(f1,t);f.frequency.exponentialRampToValueAtTime(f2,t+d);const v=AC.createGain();v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+d*.35);v.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(v);v.connect(out(pan));s.start(t);s.stop(t+d+.05);}
+// Bell: a tone whose pitch is wobbled by a second tone (FM), for chimes, rings and tings.
+function sBell(t,f,d,g,ratio,depth,pan){const c=AC.createOscillator(),m=AC.createOscillator(),mg=AC.createGain(),v=AC.createGain();c.type='sine';m.type='sine';c.frequency.setValueAtTime(f,t);m.frequency.setValueAtTime(f*ratio,t);mg.gain.setValueAtTime(f*depth,t);mg.gain.exponentialRampToValueAtTime(f*.02+.01,t+d);m.connect(mg);mg.connect(c.frequency);v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+.006);v.gain.exponentialRampToValueAtTime(.0001,t+d);c.connect(v);v.connect(out(pan));c.start(t);m.start(t);c.stop(t+d+.05);m.stop(t+d+.05);}
+const sArp=(t,fs,step,d,type,g)=>fs.forEach((f,i)=>sTone(t+i*step,f,d,type,g,0,0,fs.length>1?(i/(fs.length-1)-.5)*.5:0));
+const sChord=(t,fs,d,type,g,att)=>fs.forEach((f,i)=>sTone(t,f*(1+(i%2?.002:-.002)),d,type,g,0,att));
+function sSlam(t,g){sTone(t,150,.5,'sine',g,40);sNoise(t,.28,g*.6,1800,200,.7);}
+const NT={C4:261.63,D4:293.66,E4:329.63,G4:392,A4:440,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880,B5:987.77,C6:1046.5,D6:1174.66,E6:1318.51,G6:1567.98,A6:1760,C7:2093};
+// One sound per medal, timed to its animation: t0 is the start, ti is the moment the emblem lands.
+const TIER_SOUNDS=[
+ (t0,ti)=>{const n=NT;sNoise(t0,.55,.07,300,900,.8);sBell(ti,n.G4,1.3,.15,2,1.2);sBell(ti+.3,n.C5,1.5,.13,2,1);},
+ (t0,ti)=>{const n=NT;sNoise(t0,.45,.08,400,1400);sTone(ti,180,.14,'sine',.2,90);sArp(ti+.06,[n.C5,n.E5,n.G5],.11,.4,'triangle',.12);},
+ (t0,ti)=>{const n=NT;sNoise(t0,.6,.14,500,3000,1.5);sTone(ti,1250,.05,'square',.08);sTone(ti+.05,700,.5,'sine',.16,1050);sArp(ti+.35,[n.G5,n.D6],.12,.35,'triangle',.15);},
+ (t0,ti)=>{const n=NT;sTone(t0+.08,900,.42,'sine',.06,280);sTone(ti,160,.32,'sine',.32,70);sArp(ti+.07,[n.D5,n.E5,n.G5,n.A5],.09,.42,'triangle',.12);},
+ (t0,ti)=>{const n=NT;sNoise(t0,.5,.12,200,4500,1.1);sBell(ti,n.E6,.9,.1,3.5,2,-.3);sBell(ti+.13,n.A6,.8,.08,3.5,2,.3);sChord(ti+.05,[n.C5,n.E5,n.A5],1.1,'triangle',.07,.06);},
+ (t0,ti)=>{const n=NT;sNoise(t0,.55,.16,1200,220,.9,'lowpass');sBell(ti,n.C5,1.7,.16,1.41,3);sChord(ti+.02,[n.C5,n.E5,n.G5],.28,'square',.035);sBell(ti+.32,n.G6,.7,.06,2,1);},
+ (t0,ti)=>{const n=NT;sNoise(t0,.3,.14,300,2800);sTone(ti-.13,130,.16,'sine',.3,60);sNoise(ti-.13,.1,.18,2500,600,.8);sSlam(ti,.55);sChord(ti+.02,[n.G4,n.D5,n.G5],.32,'sawtooth',.04,.006);sArp(ti+.12,[n.G5,n.A5,n.C6,n.D6],.06,.22,'square',.04);},
+ (t0,ti)=>{const n=NT;sTone(t0,240,Math.max(.25,ti-t0),'sawtooth',.03,960);sNoise(t0,.42,.12,300,3000);sSlam(ti,.58);sNoise(ti+.03,.7,.16,5000,9000,9,'bandpass');sNoise(ti+.25,.5,.1,7000,4000,9,'bandpass');sArp(ti+.12,[n.C5,n.E5,n.G5,n.C6,n.E6],.085,.5,'triangle',.12);sBell(ti+.55,n.E6,1.8,.09,1.5,1.2);},
+ (t0,ti)=>{const n=NT;sNoise(t0,.42,.2,300,3200);sSlam(ti,.62);sNoise(ti+.06,.35,.14,400,2600,1.2,'bandpass',-.6);sNoise(ti+.22,.35,.14,500,3300,1.2,'bandpass',.6);sArp(ti+.12,[n.E5,n.G5,n.C6,n.E6,n.G6,n.C7],.07,.45,'triangle',.11);sNoise(ti+.1,1.2,.05,6000,9000,.5,'bandpass');},
+ (t0,ti)=>{const n=NT;sTone(t0,2000,Math.max(.2,ti-t0+.04),'sine',.07,400);sSlam(ti,.66);sBell(ti+.2,n.C7,1.1,.08,2.76,1.5);sChord(ti+.06,[n.C5,n.G5,n.C6,n.E6],1.3,'triangle',.07,.03);sArp(ti+.1,[n.G5,n.A5,n.C6,n.D6,n.E6,n.G6],.07,.4,'triangle',.08);sNoise(ti+.1,1.3,.05,6000,9500,.5);},
+ (t0,ti)=>{const n=NT;sNoise(t0,Math.max(.25,ti-t0+.08),.22,200,4200,.9);sTone(t0,220,Math.max(.25,ti-t0+.05),'triangle',.06,880);sSlam(ti,.68);sTone(ti+.09,90,.6,'sine',.4,30);
+  [[n.G5,0],[n.C6,.14],[n.E6,.28],[n.G6,.42]].forEach(([f,o])=>{sTone(ti+.3+o,f,o===.42?1.1:.2,'square',.035);sTone(ti+.3+o,f,o===.42?1.2:.24,'triangle',.08);});
+  sChord(ti+.72,[n.C5,n.E5,n.G5,n.C6],1.9,'triangle',.08,.08);
+  for(let i=0;i<12;i++)sBell(ti+.9+i*.1,n.C7*(1+Math.random()*.9),.5,.035,2,1,(Math.random()-.5)*1.4);
+  sNoise(ti+.4,1.8,.05,6000,9500,.5);}
+];
 function winSound(k,landMs){
  if(!audio())return;
  if(AC.state!=='running'&&AC.resume){const start=Date.now(),r=AC.resume();if(r&&r.then)r.then(()=>{const late=Date.now()-start;if(late<1500)playWinSound(k,Math.max(0,landMs-late));},()=>{});return;}
  playWinSound(k,landMs);
 }
 function playWinSound(k,landMs){
- try{
-  const t0=AC.currentTime+.03,ti=t0+landMs/1000;
-  sNoise(t0,.45+k*.02,.16+k*.02,300,2400+k*200);
-  if(k>=6){sTone(ti,150,.5,'sine',.5+k*.02,40);sNoise(ti,.28,.3,1800,200,.7);}
-  else if(k>=3)sTone(ti,220,.35,'sine',.28,90);
-  const scale=[523.25,587.33,659.25,783.99,880,1046.5,1174.66,1318.51,1567.98,1760,2093];
-  const n=2+Math.floor(k/2),base=Math.floor(k/2);
-  for(let i=0;i<n;i++)sTone(ti+.08+i*.085,scale[Math.min(10,base+i)],.5,'triangle',.13);
-  if(k>=8)sNoise(ti+.05,1.1,.05,6000,9000,.5);
-  if(k===10){[523.25,659.25,783.99,1046.5].forEach(f=>sTone(ti+.75,f,1.7,'triangle',.09));for(let i=0;i<10;i++)sTone(ti+.95+i*.11,2093*(1+Math.random()),.25,'sine',.05);}
- }catch(e){}
+ try{const t0=AC.currentTime+.03;TIER_SOUNDS[k](t0,t0+landMs/1000);}catch(e){}
 }
 function setSound(on){state.set.sound=on;save();if(AM&&AC)try{AM.gain.setValueAtTime(on?.55:0,AC.currentTime);}catch(e){}muteIcon();if(ui.view==='tools')renderTools();}
 function muteIcon(){const on=state.set.sound,b=$('win-mute');b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>'+(on?'<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>':'<path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>')+'</svg>';b.setAttribute('aria-label',on?'Sound on. Tap to mute.':'Sound off. Tap to turn on.');}
@@ -1239,6 +1256,9 @@ $('win-stage').addEventListener('click',e=>{if(e.target.closest('button'))return
 $('win-close').onclick=()=>$('win').close();
 $('win-replay').onclick=()=>{const r=W&&W.r;if(r)runWin(r);};
 $('win-mute').onclick=()=>setSound(!state.set.sound);
+$('tier-preview').innerHTML=TIERS.map((t,k)=>'<option value="'+k+'">Tier '+(k+1)+': '+t.n+' ('+(k===10?'100%':k*10+'\u2013'+(k*10+9)+'%')+')</option>').join('');
+// Plays any medal for a look and listen. Nothing is saved.
+$('tier-play').onclick=()=>{const k=+$('tier-preview').value,p=k===10?100:k*10+5;playWin({k,p,done:p,total:100,date:ui.date});$('win-sub').textContent='Preview only. Nothing is saved.';};
 $('win').addEventListener('close',()=>{stopWin();renderFinish();});
 $('win-stage').addEventListener('scroll',()=>{if($('win').open)placeDeco();},{passive:true});
 window.addEventListener('resize',()=>{if($('win').open)placeDeco();});
@@ -1538,7 +1558,9 @@ function start(){
 buildBackdrop();
 if(locked)showLock();else start();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
-if(window.__MM_TEST__)window.MM={get state(){return state;},validate,items,stats,archive,planPrune,tierOf,emblemSVG,TIERS,fxCount:()=>P.length};
+// Test harness only: render one medal's sound offline and report its loudness envelope and brightness.
+async function renderTier(k){const keep=[AC,AM,NB],sr=22050;try{const oc=new OfflineAudioContext(1,sr*5,sr);AC=oc;NB=null;const comp=oc.createDynamicsCompressor();AM=oc.createGain();AM.gain.value=.55;AM.connect(comp);comp.connect(oc.destination);TIER_SOUNDS[k](.03,.03+(k>=6?.43:.56));const d=(await oc.startRendering()).getChannelData(0),win=sr/10,env=[],zc=[];let peak=0,last=0;for(let w=0;w<50;w++){let e=0,z=0;for(let i=w*win;i<(w+1)*win;i++){const x=d[i];e+=x*x;if(Math.abs(x)>peak)peak=Math.abs(x);if(Math.abs(x)>.01)last=i;if(i&&(x>=0)!==(d[i-1]>=0))z++;}env.push(Math.sqrt(e/win));zc.push(z);}return {peak,seconds:last/sr,env,zc};}finally{AC=keep[0];AM=keep[1];NB=keep[2];}}
+if(window.__MM_TEST__)window.MM={renderTier,get state(){return state;},validate,items,stats,archive,planPrune,tierOf,emblemSVG,TIERS,fxCount:()=>P.length};
 })();
 </script>
 </body>

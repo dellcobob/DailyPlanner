@@ -11,7 +11,7 @@ Daily Missions: a planner for your whole day that runs fully offline on your pho
 
 - **Opens on today** in a one-day view. Swipe left or right, or use the arrows, to change days.
 - **Check off** objectives. The ring, the day strip, and the hex backdrop fill in as you go.
-- **Finish day** plays a rank-up animation for your result. There are 11 tiers, one for each 10% (0 to 9%, 10 to 19%, up to 90 to 99%) plus 100%. Each tier has its own emblem, title, entrance, effects, and sound, and they build from a calm badge at Recruit to the full Legend celebration. Tap to skip. Sound can be muted on the result screen or in **Tools > Look**.
+- **Finish day** plays a rank-up animation for your result. There are 11 tiers, one for each 10% (0 to 9%, 10 to 19%, up to 90 to 99%) plus 100%. Each tier has its own emblem, title, entrance, effects, and its own sound effect, and they build from a calm badge at Recruit to the full Legend celebration. Tap to skip. Sound can be muted on the result screen or in **Tools > Look**, where **Preview a medal** plays any tier's animation and sound without saving anything.
 - **Add, edit, and remove tasks.** Each task has a name, a start and end time, and the weekdays it repeats on (or "This day only").
 - **Type-ahead names.** As you type a task name, a dropdown suggests tasks you already have, with their usual time and days. Picking one for a new task fills in its time too.
 - **Reorder by dragging** the grip on the right, or press and hold a task. Order never changes a task's time. To change a time, tap the time.
