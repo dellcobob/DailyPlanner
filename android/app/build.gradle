@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The planner itself is the single HTML file at the repository root; it ships as assets/index.html.
+def plannerDir = layout.buildDirectory.dir('generated/planner')
+def copyPlanner = tasks.register('copyPlanner', Copy) {
+    from(rootProject.file('../Daily_Missions.html'))
+    into(plannerDir)
+    rename { 'index.html' }
+}
+
+android {
+    namespace 'com.morningmissions.tracker'
+    compileSdk 35
+
+    defaultConfig {
+        // Same id as the installed app, so this build updates it in place and keeps its data.
+        applicationId 'com.morningmissions.tracker'
+        minSdk 26
+        targetSdk 35
+        versionCode 9
+        versionName '2.4.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signed outside CI with the private key, see build/build_apk.py --shell.
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main { assets.srcDirs += plannerDir }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+tasks.named('preBuild') { dependsOn copyPlanner }
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+}

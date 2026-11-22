@@ -7,6 +7,8 @@ keeps stored entries 4-byte aligned, and signs with APK Signature Scheme v2.
 
   python3 build/build_apk.py --key signing/key.pem --cert signing/cert.pem
   python3 build/build_apk.py --new-key signing/   # first time: make a signing key
+  python3 build/build_apk.py --shell build/shell/app-release-unsigned.apk --key ... --cert ...
+                                                  # sign the native app GitHub Actions built
 
 The key may be a password-protected PEM; set DM_KEY_PASSWORD or type it when asked.
 
@@ -95,8 +97,12 @@ def patch_manifest(data, code, name, label=None):
     return bytes(d)
 
 
-def build_zip(base, html, code, name, label=None):
+def build_zip(base, html, code, name, label=None, shell=False):
+    """Rewrites the APK with the current planner. With shell=True the APK is the native app built by
+    GitHub Actions (android/), which already has its version, name, and hardened WebView settings."""
     src = zipfile.ZipFile(base)
+    if 'assets/index.html' not in src.namelist():
+        raise SystemExit('%s has no assets/index.html' % base)
     out = io.BytesIO()
     dst = zipfile.ZipFile(out, 'w')
     for info in src.infolist():
@@ -106,9 +112,9 @@ def build_zip(base, html, code, name, label=None):
         data = src.read(fn)
         if fn == 'assets/index.html':
             data = html
-        elif fn == 'AndroidManifest.xml':
+        elif fn == 'AndroidManifest.xml' and not shell:
             data = patch_manifest(data, code, name, label)
-        elif fn == 'classes.dex':
+        elif fn == 'classes.dex' and not shell:
             data = harden_dex(data)
         zi = zipfile.ZipInfo(fn, date_time=(1981, 1, 1, 1, 1, 2))
         zi.compress_type = info.compress_type
@@ -167,6 +173,7 @@ def sign_v2(apk, key_pem, cert_pem):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--base', default=os.path.join(ROOT, 'build', 'wrapper.apk'))
+    ap.add_argument('--shell', metavar='APK', help='sign the native app built by GitHub Actions (build/shell/app-release-unsigned.apk) instead of patching the old wrapper')
     ap.add_argument('--html', default=os.path.join(ROOT, 'Daily_Missions.html'))
     ap.add_argument('--out', default=os.path.join(ROOT, 'Daily_Missions_Android.apk'))
     ap.add_argument('--key'); ap.add_argument('--cert')
@@ -184,7 +191,13 @@ def main():
         html = f.read()
     if csp.expected(html.decode('utf-8')) != csp.current(html.decode('utf-8')):
         raise SystemExit('The Content-Security-Policy in the HTML is out of date. Run: python3 build/csp.py')
-    unsigned = build_zip(a.base, html, a.version_code, a.version_name, a.label)
+    if a.shell:
+        pkg = next((r for el, at, _t, _v, _o, r in axml.attributes(zipfile.ZipFile(a.shell).read('AndroidManifest.xml')) if el == 'manifest' and at == 'package'), None)
+        if pkg != 'com.morningmissions.tracker':
+            raise SystemExit('unexpected package in %s: %s' % (a.shell, pkg))
+        unsigned = build_zip(a.shell, html, None, None, None, shell=True)
+    else:
+        unsigned = build_zip(a.base, html, a.version_code, a.version_name, a.label)
     with open(a.key, 'rb') as k, open(a.cert, 'rb') as c:
         apk = sign_v2(unsigned, k.read(), c.read())
     with open(a.out, 'wb') as f:

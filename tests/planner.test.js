@@ -870,6 +870,108 @@ async function test(name, fn) {
     await ctx.close();
   });
 
+  const NATIVE_MOCK = `window.__nn={calls:[],perm:'ask',lists:[]};
+    window.NativeNotify={status:()=>JSON.stringify({perm:window.__nn.perm,exact:true,count:0}),
+      requestPermission:()=>{window.__nn.calls.push('req');setTimeout(()=>{if(window.__nn.perm==='ask')window.__nn.perm='granted';window.onNativeNotifyPermission&&window.onNativeNotifyPermission();},10);},
+      schedule:j=>{window.__nn.lists.push(JSON.parse(j));return 0;},test:j=>{window.__nn.test=JSON.parse(j);},openSettings:()=>{window.__nn.calls.push('settings');}};
+    window.NativeApp={setSecure:v=>{window.__nn.secure=v;}};`;
+  const lastList = p => p.evaluate(() => window.__nn.lists[window.__nn.lists.length - 1] || null);
+
+  await test('notifications: browser explains they need the Android app', async () => {
+    const { ctx, p } = await open();
+    await tab(p, 'tools');
+    assert.match(await p.textContent('#n-status'), /work in the Daily Missions Android app/);
+    assert.equal(await p.isVisible('#n-opts'), false);
+    assert.equal(await p.isDisabled('input[name=notif][value=on]'), true);
+    assert.equal(await p.isVisible('#secure-line'), false);
+    await ctx.close();
+  });
+
+  await test('notifications: turning on asks permission and plans each kind of reminder', async () => {
+    const { ctx, p } = await open({ init: NATIVE_MOCK });
+    await tab(p, 'tools');
+    assert.match(await p.textContent('#n-status'), /^Off\./);
+    await p.check('input[name=notif][value=on]');
+    await p.waitForFunction(() => window.__nn.perm === 'granted' && window.__nn.lists.length > 0);
+    assert.deepEqual(await p.evaluate(() => window.__nn.calls), ['req']);
+    const list = await lastList(p);
+    const ids = list.map(x => x.id);
+    assert.ok(ids.includes('t:2026-11-20:f') && ids.includes('t:2026-11-20:h'), 'task reminders later today');
+    assert.ok(!ids.some(i => /^t:2026-11-20:(0|2|e)$/.test(i)), 'no reminders for tasks that already started');
+    assert.ok(ids.includes('m:2026-11-20:e'), 'missed-task nudge for Study, which just ended');
+    assert.ok(!ids.includes('s:2026-11-20') && ids.includes('s:2026-11-23'), 'morning summary for the next working day');
+    assert.ok(ids.includes('f:2026-11-20'), 'finish-day reminder tonight');
+    assert.ok(!ids.some(i => i.includes('2026-11-21')), 'nothing on the rest day');
+    const walk = list.find(x => x.id === 't:2026-11-20:f');
+    assert.deepEqual([walk.at, walk.title, walk.priv], ['2026-11-20T09:20', 'Walk down', 1]);
+    assert.equal(list.find(x => x.id === 'f:2026-11-20').at, '2026-11-20T21:00');
+    assert.equal(list.find(x => x.id === 's:2026-11-23').at, '2026-11-23T05:45');
+    assert.ok(list.every((x, i) => i === 0 || list[i - 1].at <= x.at), 'sorted by time');
+    assert.ok(list[list.length - 1].at < '2026-12-04', 'two weeks ahead');
+    assert.match(await p.textContent('#n-status'), /^On\. Next: Walk down, today at 9:20 AM\./);
+    await ctx.close();
+  });
+
+  await test('notifications: checking a task and changing settings re-plan the reminders', async () => {
+    const { ctx, p } = await open({ init: NATIVE_MOCK + "window.__nn.perm='granted';" });
+    await tab(p, 'tools'); await p.check('input[name=notif][value=on]');
+    await p.waitForFunction(() => window.__nn.lists.length > 0);
+    await tab(p, 'day');
+    const row = p.locator('#day-list .task', { has: p.locator('.task-title', { hasText: /^Walk down$/ }) });
+    await row.locator('input').check();
+    await p.waitForFunction(() => !window.__nn.lists[window.__nn.lists.length - 1].some(x => x.id === 't:2026-11-20:f'));
+    assert.ok(!(await lastList(p)).some(x => x.id === 'm:2026-11-20:f'), 'no nudge for a checked task');
+    await tab(p, 'tools');
+    await p.selectOption('#n-priv', 'never');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].every(x => !/Walk|Yoga|Study|Group|Coffee/.test(x.title + x.body)));
+    assert.ok((await lastList(p)).every(x => x.priv === 0));
+    await p.selectOption('#n-lead', '15');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].some(x => x.id === 't:2026-11-20:g' && x.at === '2026-11-20T09:20'));
+    await p.uncheck('#n-task');
+    await p.waitForFunction(() => !window.__nn.lists[window.__nn.lists.length - 1].some(x => x.id.startsWith('t:')));
+    assert.equal(await p.isDisabled('#n-lead'), true);
+    await p.click('#n-none');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].length === 0);
+    await p.click('#n-all');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].length > 20);
+    await p.fill('#n-finat', '20:30'); await p.dispatchEvent('#n-finat', 'change');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].some(x => x.id === 'f:2026-11-20' && x.at === '2026-11-20T20:30'));
+    await p.check('input[name=notif][value=off]');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].length === 0);
+    await p.reload(); await p.waitForSelector('#day-list .task');
+    const st = await S(p);
+    assert.deepEqual([st.set.notif, st.set.nTask, st.set.nLead, st.set.nPriv, st.set.nFinAt], [false, true, 15, 'never', 1230], 'settings survive a reload');
+    await ctx.close();
+  });
+
+  await test('notifications: test button, blocked permission, and screenshot blocking', async () => {
+    const { ctx, p } = await open({ init: NATIVE_MOCK + "window.__nn.perm='granted';" });
+    await tab(p, 'tools'); await p.check('input[name=notif][value=on]');
+    await p.click('#n-test');
+    const tn = await p.evaluate(() => window.__nn.test);
+    assert.equal(tn.ch, 'test'); assert.equal(tn.title, 'Walk down');
+    await p.evaluate(() => { window.__nn.perm = 'denied'; });
+    await tab(p, 'day'); await tab(p, 'tools');
+    assert.match(await p.textContent('#n-status'), /blocked for Daily Missions/);
+    await p.click('#n-settings');
+    assert.ok((await p.evaluate(() => window.__nn.calls)).includes('settings'));
+    await setPasscode(p, 'secret-123');
+    assert.match(await p.textContent('#n-hint'), /without encryption/);
+    assert.equal(await p.isVisible('#secure-line'), true);
+    await p.check('#set-secure');
+    assert.equal(await p.evaluate(() => window.__nn.secure), true);
+    await ctx.close();
+  });
+
+  await test('restore uses the Android file picker when the app provides one', async () => {
+    const old = fs.readFileSync(OLD_BACKUP, 'utf8');
+    const { ctx, p } = await open({ init: `window.NativeFiles={openText:()=>setTimeout(()=>window.onNativeFileOpened(true),10),takeOpened:()=>${JSON.stringify(old)}};` });
+    await tab(p, 'tools'); await p.click('#import-backup');
+    await p.waitForSelector('#ask-dialog[open]'); await choose(p, '#ask-ok');
+    assert.equal((await S(p)).name, 'Test Player');
+    await ctx.close();
+  });
+
   await test('layout fits phone widths with long names and large text', async () => {
     const { ctx, p } = await open({ viewport: { width: 320, height: 700 } });
     await p.addStyleTag({ content: 'html{font-size:130%}' });

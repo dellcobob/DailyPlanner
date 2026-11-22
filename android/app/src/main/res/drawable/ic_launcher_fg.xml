@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hexagon with a rising sun, drawn inside the adaptive icon's 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M54,31 L73.9,42.5 L73.9,65.5 L54,77 L34.1,65.5 L34.1,42.5 Z"
+        android:fillColor="#00000000" android:strokeColor="#FFEAF1F6"
+        android:strokeWidth="4.5" android:strokeLineJoin="round" />
+    <path android:pathData="M42.5,61.5 A11.5,11.5 0 0,1 65.5,61.5"
+        android:fillColor="#00000000" android:strokeColor="#FFFFAC32"
+        android:strokeWidth="5" android:strokeLineCap="round" />
+    <path android:pathData="M40.5,67 L67.5,67 M54,41 L54,46 M44.6,45 L47.6,48.2 M63.4,45 L60.4,48.2"
+        android:fillColor="#00000000" android:strokeColor="#FFEAF1F6"
+        android:strokeWidth="3.6" android:strokeLineCap="round" />
+</vector>

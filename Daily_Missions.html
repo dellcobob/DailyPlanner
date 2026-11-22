@@ -2,7 +2,7 @@
 <html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-hpoRm03znfPY3zX2ZTOrkNShz9eEX+qwM35evFbURUM='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-8lKCqSMpLXU2HMFOfIqlqwjaDrO8txCWX/w93kVuJi0='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#182331">
@@ -182,6 +182,10 @@ textarea.input{resize:vertical;line-height:1.5}
 /* tools */
 .tools{display:grid;gap:14px;margin:8px 0 24px;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
 .tools .wide{grid-column:1/-1}
+.n-grid{display:grid;gap:4px 16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));margin-bottom:8px}
+.n-item{display:flex;flex-direction:column;gap:2px;min-width:0;margin-bottom:8px}
+.n-item .check-line{margin:0}
+.n-off{opacity:.5}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:.88rem;margin:0 0 12px;min-width:0}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:0 12px}
 .seg{display:flex;gap:4px;background:var(--surface-3);border-radius:10px;padding:4px}
@@ -350,12 +354,30 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
     <div class="row-btns"><button class="btn ghost" id="st-check">Check storage now</button></div>
     <p class="hint">A day's score is just "done / total", a few bytes. Archived days still show in Month view, without their task list.</p>
    </section>
+   <section class="card wide" id="notif-card"><h2>Notifications</h2>
+    <p class="hint" id="n-status" style="margin:0 0 10px"></p>
+    <div class="row-btns" id="n-perm-row" hidden><button class="btn primary" id="n-allow">Allow notifications</button><button class="btn ghost" id="n-settings">Open phone settings</button></div>
+    <div class="field"><span>Notifications</span><div class="seg" role="radiogroup" aria-label="Notifications"><label><input type="radio" name="notif" value="on"><span>On</span></label><label><input type="radio" name="notif" value="off"><span>Off</span></label></div></div>
+    <div id="n-opts">
+     <div class="n-grid">
+      <div class="n-item"><label class="check-line"><input type="checkbox" class="cb" id="n-task"><span>Task reminders</span></label><select id="n-lead" class="input" aria-label="When to send task reminders"><option value="0">When the task starts</option><option value="5">5 minutes before</option><option value="10">10 minutes before</option><option value="15">15 minutes before</option><option value="30">30 minutes before</option></select></div>
+      <div class="n-item"><label class="check-line"><input type="checkbox" class="cb" id="n-sum"><span>Morning summary</span></label><select id="n-sumlead" class="input" aria-label="When to send the morning summary"><option value="15">15 minutes before the first task</option><option value="30">30 minutes before the first task</option><option value="60">1 hour before the first task</option></select></div>
+      <div class="n-item"><label class="check-line"><input type="checkbox" class="cb" id="n-fin"><span>Finish-day reminder</span></label><input type="time" id="n-finat" class="input" aria-label="Time for the finish-day reminder"></div>
+      <div class="n-item"><label class="check-line"><input type="checkbox" class="cb" id="n-miss"><span>Missed-task nudge</span></label><select id="n-missafter" class="input" aria-label="When to nudge about a missed task"><option value="10">10 minutes after a task ends</option><option value="30">30 minutes after a task ends</option><option value="60">1 hour after a task ends</option></select></div>
+     </div>
+     <div class="row-btns"><button class="btn ghost sm" id="n-all">Turn all on</button><button class="btn ghost sm" id="n-none">Turn all off</button></div>
+     <label class="field" style="margin-top:12px">On the lock screen<select id="n-priv" class="input"><option value="show">Show task names</option><option value="lock">Hide task names on the lock screen</option><option value="never">Never show task names</option></select></label>
+     <div class="row-btns"><button class="btn ghost" id="n-test">Send a test notification</button></div>
+     <p class="hint" id="n-hint"></p>
+    </div>
+   </section>
    <section class="card"><h2>App lock</h2><p class="hint" id="lock-status" style="margin:0 0 10px"></p>
     <div class="row-btns" id="lock-off-btns"><button class="btn primary" id="lock-enable">Set a passcode</button></div>
     <div id="lock-on-ui" hidden>
      <label class="field">Lock again after you leave the app<select id="set-lockafter" class="input"><option value="0">Right away</option><option value="1">After 1 minute</option><option value="5">After 5 minutes</option><option value="15">After 15 minutes</option><option value="60">After 1 hour</option></select></label>
      <div class="row-btns"><button class="btn primary" id="lock-now">Lock now</button><button class="btn ghost" id="lock-change">Change passcode</button><button class="btn ghost" id="lock-disable">Turn off</button></div>
     </div>
+    <label class="check-line" id="secure-line" hidden style="margin-top:10px"><input type="checkbox" class="cb" id="set-secure"><span>Hide from screenshots and the recent-apps preview</span></label>
     <p class="hint">With a passcode, everything Daily Missions stores on this device is encrypted, and so are your backups and HTML copies. If you forget the passcode the data cannot be recovered, so keep a backup somewhere safe.</p></section>
    <section class="card"><h2>Backups</h2><p class="hint" style="margin:0 0 10px">A backup holds your routine, check marks, notes, and settings. Keep one somewhere safe before you switch phones or reinstall the app.</p>
     <div class="row-btns"><button class="btn primary" id="export-backup">Export backup (.json)</button><button class="btn ghost" id="import-backup">Restore backup</button><button class="btn ghost" id="save-html">Save HTML copy</button><button class="btn ghost" id="export-plain" hidden>Export unencrypted backup</button></div>
@@ -455,8 +477,8 @@ const shortDate=s=>fmtD(s,{weekday:'short',month:'short',day:'numeric'});
 const weekRange=ws=>fmtD(ws,{month:'short',day:'numeric'})+' – '+fmtD(addDays(ws,6),{month:'short',day:'numeric',year:'numeric'});
 const maskLabel=m=>m===127?'Every day':m===31?'Weekdays':m===96?'Weekends':SHORT.filter((_,i)=>m&(1<<i)).join(' ');
 
-const DEF={theme:'auto',clock:12,keep:12,cap:500,old:'score',ask:true,scope:'ask',sound:true,lockAfter:1};
-const OPT={theme:['auto','light','dark'],clock:[12,24],keep:[1,3,6,12,24,0],cap:[100,250,500,1000,2000,4000],old:['score','delete'],ask:[true,false],scope:['ask','day','after'],sound:[true,false],lockAfter:[0,1,5,15,60]};
+const DEF={theme:'auto',clock:12,keep:12,cap:500,old:'score',ask:true,scope:'ask',sound:true,lockAfter:1,secure:false,notif:false,nTask:true,nLead:0,nSum:true,nSumLead:15,nFin:true,nFinAt:1260,nMiss:true,nMissAfter:30,nPriv:'lock'};
+const OPT={theme:['auto','light','dark'],clock:[12,24],keep:[1,3,6,12,24,0],cap:[100,250,500,1000,2000,4000],old:['score','delete'],ask:[true,false],scope:['ask','day','after'],sound:[true,false],lockAfter:[0,1,5,15,60],secure:[true,false],notif:[true,false],nTask:[true,false],nLead:[0,5,10,15,30],nSum:[true,false],nSumLead:[15,30,60],nFin:[true,false],nMiss:[true,false],nMissAfter:[10,30,60],nPriv:['show','lock','never']};
 
 /* ---------- data ---------- */
 function fresh(){
@@ -474,7 +496,7 @@ function validate(raw){
  if(typeof raw.name==='string')s.name=clean1(raw.name,60);
  if(isDate(raw.since))s.since=raw.since;
  if(raw.pruned!=null){if(!isDate(raw.pruned))throw Error('Invalid archive date.');s.pruned=raw.pruned;}
- if(isObj(raw.set))for(const k in DEF)if(OPT[k].indexOf(raw.set[k])>=0)s.set[k]=raw.set[k];
+ if(isObj(raw.set))for(const k in DEF){const v=raw.set[k];if(OPT[k]?OPT[k].indexOf(v)>=0:isMin(v))s.set[k]=v;}
  if(typeof raw.pid==='string'&&/^[a-z0-9]{1,40}$/i.test(raw.pid))s.pid=raw.pid;
  if(!isObj(raw.tasks))throw Error('The backup has no routine.');
  const ids=Object.keys(raw.tasks);if(ids.length>LIM.tasks)throw Error('The backup has too many tasks.');
@@ -611,7 +633,7 @@ async function flush(){while(sealing)await sealing;}
 const sizeOf=json=>lk?Math.ceil(json.length*4/3)+300:json.length;
 function save(){
  if(locked||!state)return storageOK;
- const json=JSON.stringify(state);persist(json);
+ const json=JSON.stringify(state);persist(json);syncReminders(false);
  if(sizeOf(json)>state.set.cap*1024&&!pending&&!snoozed)setTimeout(()=>runPruneCheck(false),0);
  return storageOK;
 }
@@ -900,7 +922,7 @@ function renderTools(){
  document.querySelectorAll('input[name=sound]').forEach(r=>{r.checked=(r.value==='on')===state.set.sound;});
  $('set-scope').value=state.set.scope;$('set-keep').value=String(state.set.keep);$('set-cap').value=String(state.set.cap);$('set-old').value=state.set.old;$('set-ask').checked=state.set.ask;
  const json=JSON.stringify(state),bytes=lk?(lsGet(KEY)||'').length:new Blob([json]).size,cap=state.set.cap*1024,logged=Object.keys(state.days).length;
- renderLockUI();
+ renderLockUI();renderNotifUI();
  let scored=0;for(const k in state.scores)scored+=state.scores[k].split(',').filter(Boolean).length;
  $('st-meter').firstChild.style.width=Math.min(100,bytes/cap*100).toFixed(1)+'%';
  $('st-usage').textContent='Using '+fmtBytes(bytes)+' of '+fmtBytes(cap)+' ('+Math.round(bytes/cap*100)+'%). Full details from '+longDate(detailStart())+'. '+logged+' day'+(logged===1?'':'s')+' with check marks'+(scored?', '+scored+' archived day scores':'')+'.'+(lk?' Stored encrypted.':'')+(storageOK?'':' Saving is blocked in this browser.');
@@ -1293,6 +1315,7 @@ function renderLockUI(){
  $('lock-off-btns').hidden=on;$('lock-on-ui').hidden=!on;$('export-plain').hidden=!on;$('lock-enable').disabled=!cc;
  $('lock-status').textContent=on?'On. Your planner is encrypted on this device.':cc?'Off. Anyone who can open this app on your phone can read your planner.':'Not available in this browser.';
  $('set-lockafter').value=String(state.set.lockAfter);
+ $('secure-line').hidden=!NA();$('set-secure').checked=!!state.set.secure;
 }
 function showLock(msg){
  document.body.classList.add('is-locked');document.body.classList.remove('veil');
@@ -1363,6 +1386,74 @@ document.addEventListener('visibilitychange',()=>{
  else{const away=hiddenAt?Date.now()-hiddenAt:0;hiddenAt=0;if(away>=state.set.lockAfter*60000)lockNow();else document.body.classList.remove('veil');}
 });
 
+/* ---------- notifications (Android app) ---------- */
+// The page plans the reminders; the Android app stores them and shows each one on time,
+// even while the app is closed. In a browser there is no reliable way to do that, so the card says so.
+const NN=()=>window.NativeNotify&&typeof window.NativeNotify.schedule==='function'?window.NativeNotify:null;
+const NA=()=>window.NativeApp&&typeof window.NativeApp.setSecure==='function'?window.NativeApp:null;
+function nStatus(){const n=NN();if(!n)return null;try{return JSON.parse(n.status());}catch(e){return null;}}
+function planReminders(){
+ if(!state||!state.set.notif)return [];
+ const S=state.set,out=[],now=Date.now(),t=today(),anon=S.nPriv==='never',hide=S.nPriv==='lock';
+ const ms=(d,m)=>{const p=d.split('-');return new Date(+p[0],+p[1]-1,+p[2],Math.floor(m/60),m%60).getTime();};
+ const add=(id,ch,d,m,title,body)=>{if(m<0||m>1439||ms(d,m)<=now+30000)return;out.push({id,ch,at:d+'T'+hhmm(m),title:clean1(title,90),body:clean1(body,180),priv:hide?1:0});};
+ for(let i=0;i<14;i++){
+  const d=addDays(t,i);if(archived(d))continue;
+  const its=items(d);if(!its.length)continue;
+  const c=checks(d),open=its.filter(x=>!c.has(x.id));
+  if(S.nTask)for(const it of open)add('t:'+d+':'+it.id,'task',d,it.s-S.nLead,anon?'Mission at '+fmtTime(it.s):it.t,anon?'Open Daily Missions to see it.':fmtRange(it.s,it.e)+(S.nLead?', starts in '+S.nLead+' min':', starting now'));
+  if(S.nMiss)for(const it of open)add('m:'+d+':'+it.id,'missed',d,it.e+S.nMissAfter,anon?'A mission is still open':'Still open: '+it.t,'Check it off if you did it.');
+  if(S.nSum){const first=its.reduce((a,b)=>a.s<=b.s?a:b);add('s:'+d,'summary',d,first.s-S.nSumLead,'Today: '+its.length+(its.length===1?' objective':' objectives'),anon?'The first one starts at '+fmtTime(first.s)+'.':'First: '+first.t+' at '+fmtTime(first.s)+'.');}
+  if(S.nFin&&!(state.days[d]||{}).f){const st=stats(d);add('f:'+d,'finish',d,S.nFinAt,'Finish your day',(d===t?st.done+' of '+st.total+' done. ':'')+'Tap Finish day to see your medal.');}
+ }
+ out.sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:0);
+ return out.slice(0,400);
+}
+let lastPlan=null,planTimer=0;
+function syncReminders(now){
+ const n=NN();if(!n||!state||locked)return;
+ clearTimeout(planTimer);
+ const go=()=>{if(!state||locked)return;let list=[];try{list=planReminders();}catch(e){}const json=JSON.stringify(list);if(json===lastPlan)return;lastPlan=json;try{n.schedule(json);}catch(e){}if(ui.view==='tools')renderNotifUI();};
+ if(now)go();else planTimer=setTimeout(go,800);
+}
+function renderNotifUI(){
+ const n=NN(),S=state.set,st=nStatus(),on=S.notif;
+ document.querySelectorAll('input[name=notif]').forEach(r=>{r.checked=(r.value==='on')===on;r.disabled=!n;});
+ $('n-task').checked=S.nTask;$('n-lead').value=String(S.nLead);$('n-sum').checked=S.nSum;$('n-sumlead').value=String(S.nSumLead);
+ $('n-fin').checked=S.nFin;$('n-finat').value=hhmm(S.nFinAt);$('n-miss').checked=S.nMiss;$('n-missafter').value=String(S.nMissAfter);$('n-priv').value=S.nPriv;
+ [['n-task','n-lead'],['n-sum','n-sumlead'],['n-fin','n-finat'],['n-miss','n-missafter']].forEach(([c,x])=>{$(x).disabled=!$(c).checked;$(c).closest('.n-item').classList.toggle('n-off',!$(c).checked);});
+ $('n-opts').hidden=!n;$('n-perm-row').hidden=true;
+ let msg;
+ if(!n)msg='Notifications work in the Daily Missions Android app. This browser cannot show them while the planner is closed.';
+ else if(!on)msg='Off. Turn them on to get reminders even when the app is closed.';
+ else if(st&&st.perm==='denied'){msg='Notifications are blocked for Daily Missions in your phone settings.';$('n-perm-row').hidden=false;$('n-allow').hidden=true;}
+ else if(st&&st.perm==='ask'){msg='Daily Missions needs your permission to send notifications.';$('n-perm-row').hidden=false;$('n-allow').hidden=false;}
+ else{let next=null;try{const l=JSON.parse(lastPlan||'[]');next=l[0];}catch(e){}
+  const nd=next&&next.at.slice(0,10),day=!next?'':nd===today()?'today':nd===addDays(today(),1)?'tomorrow':shortDate(nd);
+  msg='On.'+(next?' Next: '+next.title+', '+day+' at '+fmtTime(toMin(next.at.slice(11)))+'.':' Nothing coming up in the next two weeks.');}
+ $('n-status').textContent=msg;
+ let hint='Reminders are planned two weeks ahead and refresh every time you open the app or change a task.';
+ if(st&&on&&st.exact===false)hint+=' Your phone may deliver them a few minutes late.';
+ if(lk&&S.nPriv!=='never')hint+=' With the app lock on, the task names in upcoming reminders are kept on this phone without encryption so they can be shown. Choose "Never show task names" to avoid that.';
+ $('n-hint').textContent=hint;
+}
+function notifyOn(){
+ const n=NN();if(!n)return;
+ state.set.notif=true;save();
+ const st=nStatus();if(st&&st.perm!=='granted')n.requestPermission();
+ syncReminders(true);renderNotifUI();
+}
+window.onNativeNotifyPermission=()=>{if(!state||locked)return;lastPlan=null;syncReminders(true);if(ui.view==='tools')renderNotifUI();const st=nStatus();if(st&&st.perm==='granted')toast('Notifications are on.');};
+$('n-allow').onclick=()=>{const n=NN();if(n)n.requestPermission();};
+$('n-settings').onclick=()=>{const n=NN();if(n)n.openSettings();};
+$('n-all').onclick=()=>{Object.assign(state.set,{nTask:true,nSum:true,nFin:true,nMiss:true});notifyOn();};
+$('n-none').onclick=()=>{Object.assign(state.set,{nTask:false,nSum:false,nFin:false,nMiss:false});save();syncReminders(true);renderNotifUI();};
+$('n-test').onclick=()=>{const n=NN();if(!n)return;const st=nStatus();if(st&&st.perm!=='granted'){n.requestPermission();return;}
+ const anon=state.set.nPriv==='never',c=checks(today()),open=items(today()).filter(i=>!c.has(i.id)),nm=nowMin(),it=open.find(i=>i.s>=nm)||open[0];
+ n.test(JSON.stringify({id:'test',ch:'test',title:anon||!it?'Daily Missions':it.t,body:anon||!it?'Notifications are working.':'This is how a task reminder looks.',priv:state.set.nPriv==='lock'?1:0}));
+ toast('Test notification sent. Check the top of your screen.');};
+function applySecure(){const a=NA();if(a&&state)try{a.setSecure(!!state.set.secure);}catch(e){}}
+
 /* ---------- records and files ---------- */
 // mode 'dark' or 'light' pins the on-screen colors (app preview); without it the file follows the viewer's setting. Printing is always light.
 function reportHTML(ws,mode){
@@ -1411,7 +1502,14 @@ function readText(file){return new Promise((res,rej)=>{const r=new FileReader();
 async function readBackup(file){
  try{
   if(!file)return;if(file.size>8e6)throw Error('Choose a backup smaller than 8 MB.');
-  let raw;try{raw=JSON.parse(await readText(file));}catch(e){throw Error('That file is not a backup.');}
+  await restoreText(await readText(file));
+ }catch(e){toast('Could not restore: '+(e&&e.message||'unreadable file'));}
+ finally{$('backup-file').value='';}
+}
+async function restoreText(text){
+ try{
+  if(typeof text!=='string'||text.length>12e6)throw Error('choose a backup smaller than 8 MB.');
+  let raw;try{raw=JSON.parse(text);}catch(e){throw Error('That file is not a backup.');}
   if(isEnc(raw)){
    if(!canCrypt())throw Error('this browser cannot open encrypted backups.');
    let opened=null;
@@ -1422,9 +1520,8 @@ async function readBackup(file){
   const next=validate(raw);if(state.pid)next.pid=state.pid;else delete next.pid;
   const n=Object.keys(next.days).length,tk=Object.keys(next.tasks).length;
   if(!await ask({title:'Restore backup?',body:'This backup has '+tk+' task'+(tk===1?'':'s')+' and '+n+' day'+(n===1?'':'s')+' of check marks. Restoring replaces everything in this planner on this device. Export a backup first if you want to keep what is here now.',ok:'Restore',danger:true}))return;
-  snapshot();state=next;save();ui.date=today();render();toast('Backup restored.',{label:'Undo',fn:undo});runPruneCheck(false);
+  snapshot();state=next;save();ui.date=today();render();toast('Backup restored.',{label:'Undo',fn:undo});runPruneCheck(false);applySecure();
  }catch(e){toast('Could not restore: '+(e&&e.message||'unreadable file'));}
- finally{$('backup-file').value='';}
 }
 
 /* ---------- drag to reorder ---------- */
@@ -1516,6 +1613,10 @@ document.addEventListener('change',e=>{
  if(el.id==='set-old'){state.set.old=el.value;save();renderBanner();return;}
  if(el.id==='set-ask'){state.set.ask=el.checked;save();return;}
  if(el.id==='set-lockafter'){state.set.lockAfter=+el.value;save();return;}
+ if(el.id==='set-secure'){state.set.secure=el.checked;save();applySecure();return;}
+ if(el.name==='notif'){if(el.value==='on')notifyOn();else{state.set.notif=false;save();syncReminders(true);renderNotifUI();}return;}
+ const nmap={'n-task':['nTask','check'],'n-sum':['nSum','check'],'n-fin':['nFin','check'],'n-miss':['nMiss','check'],'n-lead':['nLead','num'],'n-sumlead':['nSumLead','num'],'n-missafter':['nMissAfter','num'],'n-priv':['nPriv','text'],'n-finat':['nFinAt','time']};
+ if(nmap[el.id]){const [k,kind]=nmap[el.id];let v=kind==='check'?el.checked:kind==='num'?+el.value:kind==='time'?toMin(el.value):el.value;if(kind==='time'&&isNaN(v))return;if(OPT[k]&&OPT[k].indexOf(v)<0)return;state.set[k]=v;if(kind==='check'&&v&&!state.set.notif){notifyOn();return;}save();syncReminders(true);renderNotifUI();return;}
 });
 let notesTimer=0;
 document.addEventListener('input',e=>{
@@ -1531,11 +1632,12 @@ $('sort-time').onclick=()=>{snapshot();sortByTime(ui.date);save();renderList();t
 $('theme-btn').onclick=()=>{const o=OPT.theme,n=o[(o.indexOf(state.set.theme)+1)%o.length];state.set.theme=n;save();applyTheme();if(ui.view==='tools')renderTools();toast('Theme: '+n[0].toUpperCase()+n.slice(1)+'.');};
 $('export-backup').onclick=()=>exportBackup(false);
 $('export-plain').onclick=async()=>{if(await ask({title:'Export without encryption?',body:'Anyone who gets this file can read your tasks and notes. Use it only if you need to open the backup somewhere without your passcode.',ok:'Export unencrypted'}))exportBackup(true);};$('save-html').onclick=saveHTML;
-$('import-backup').onclick=()=>$('backup-file').click();$('backup-file').onchange=()=>readBackup($('backup-file').files[0]);
+$('import-backup').onclick=()=>{if(window.NativeFiles&&typeof NativeFiles.openText==='function'){try{NativeFiles.openText();return;}catch(e){}}$('backup-file').click();};
+window.onNativeFileOpened=ok=>{if(locked)return;if(!ok){toast('The file could not be opened.');return;}let t=null;try{t=NativeFiles.takeOpened();}catch(e){}restoreText(t);};$('backup-file').onchange=()=>readBackup($('backup-file').files[0]);
 $('rec-this').onclick=()=>viewRecord(monday(today()));$('rec-dl-this').onclick=()=>downloadRecord(monday(today()));$('rec-print-this').onclick=()=>printRecord(monday(today()));
 $('rec-download').onclick=()=>downloadRecord(recWeek);$('rec-print').onclick=()=>printRecord(recWeek);
 $('st-check').onclick=()=>runPruneCheck(true);
-$('erase-all').onclick=async()=>{if(!await ask({title:'Erase all data?',body:'This deletes every task, check mark, note, and setting on this device and restores the starter routine. Export a backup first if you might want it back.',ok:'Erase everything',danger:true}))return;const wasLocked=!!lk;if(!wasLocked)snapshot();else undoSnap=null;await flush();const pid=state.pid;purgeLeftovers(true);lk=null;state=fresh();if(pid)state.pid=pid;save();ui.date=today();show('day');if(wasLocked)toast('Planner reset and app lock turned off.');else toast('Planner reset.',{label:'Undo',fn:undo});};
+$('erase-all').onclick=async()=>{if(!await ask({title:'Erase all data?',body:'This deletes every task, check mark, note, and setting on this device and restores the starter routine. Export a backup first if you might want it back.',ok:'Erase everything',danger:true}))return;const wasLocked=!!lk;if(!wasLocked)snapshot();else undoSnap=null;await flush();const pid=state.pid;purgeLeftovers(true);lk=null;state=fresh();if(pid)state.pid=pid;save();applySecure();syncReminders(true);ui.date=today();show('day');if(wasLocked)toast('Planner reset and app lock turned off.');else toast('Planner reset.',{label:'Undo',fn:undo});};
 window.addEventListener('pagehide',()=>save());
 window.addEventListener('storage',e=>{if(!locked&&e.key===KEY&&e.newValue&&e.newValue!==lastWritten)toast('The planner changed in another tab. Reload this page before making more changes.');});
 let lastToday=today();
@@ -1545,7 +1647,7 @@ function tick(){
  if(t!==lastToday){if(ui.date===lastToday)ui.date=t;lastToday=t;if(!drag&&!document.querySelector('dialog[open]'))render();return;}
  if(ui.view==='day'&&ui.date===t&&!drag){const n=nowMin();list.querySelectorAll('.task').forEach(r=>r.classList.toggle('now',n>=+r.dataset.s&&n<+r.dataset.e));}
 }
-setInterval(tick,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+setInterval(tick,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();syncReminders(false);}});
 
 /* ---------- start ---------- */
 function start(){
@@ -1553,6 +1655,7 @@ function start(){
  render();renderBanner();
  if(storageOK)save();
  runPruneCheck(false);
+ applySecure();lastPlan=null;syncReminders(true);
  const nowRow=list.querySelector('.task.now');if(nowRow){const r=nowRow.getBoundingClientRect();if(r.bottom>window.innerHeight-navInset())nowRow.scrollIntoView({block:'center'});}
 }
 buildBackdrop();

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar icon: one color, Android tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M12,2.6 L20.1,7.3 L20.1,16.7 L12,21.4 L3.9,16.7 L3.9,7.3 Z"
+        android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.9" android:strokeLineJoin="round" />
+    <path android:pathData="M8,14.6 A4,4 0 0,1 16,14.6 M7.4,17.2 L16.6,17.2 M12,7.6 L12,9.6"
+        android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.9" android:strokeLineCap="round" />
+</vector>
