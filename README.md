@@ -4,7 +4,7 @@ Daily Missions: a planner for your whole day that runs fully offline on your pho
 
 | File | What it is |
 | --- | --- |
-| `Daily_Missions_Android.apk` | Android app (Android 8 or newer). Same planner, with native save, print, and back button. |
+| `Daily_Missions_Android.apk` | Android app (Android 8 or newer). Same planner, plus notifications, native save, print, and back button. |
 | `Daily_Missions.html` | The whole planner in one file. Open it in a browser. |
 
 ## What it does
@@ -17,6 +17,7 @@ Daily Missions: a planner for your whole day that runs fully offline on your pho
 - **Reorder by dragging** the grip on the right, or press and hold a task. Order never changes a task's time. To change a time, tap the time.
 - **Repeating tasks:** when you change or remove one, choose "only this day" or "this day and later". Earlier days always keep what they had.
 - **Week view** with seven columns, and **Month view** to look back at any day, see streaks, and open weekly records.
+- **Notifications (Android app).** In **Tools > Notifications**, turn on any mix of: task reminders (when a task starts, or 5 to 30 minutes before), a morning summary before the first task, an evening finish-day reminder at a time you pick, and a nudge when a task ends without being checked off. One switch turns them all on or off, and **On the lock screen** chooses whether task names show, are hidden on the lock screen, or never show. Reminders arrive even when the app is closed and come back after the phone restarts. **Send a test notification** shows one right away.
 - **Light, dark, or auto** theme, and a 12 or 24-hour clock. Light mode uses soft greys instead of bright white, and your theme is applied before the app first draws, so there is no flash on launch.
 
 | Tier | Result | Title |
@@ -52,9 +53,10 @@ Everything is saved on the device as compact JSON (about 100 bytes per day). In 
 - **Optional app lock (Tools > App lock).** Set a passcode and everything Daily Missions stores is encrypted with AES-256-GCM, using a key made from your passcode with PBKDF2-SHA256 (600,000 rounds). Backups and HTML copies are encrypted too. It locks again after you leave the app (right away, or after 1 to 60 minutes), hides the planner while the app is in the background, and slows down repeated wrong guesses. There is no way to recover a forgotten passcode, so keep a backup.
 - **Only the app's own code runs.** The policy allows just the two scripts the page ships with (checked by hash). Weekly records, previews, and downloaded record files can never run scripts, and everything you type is shown as plain text.
 - **Backups are checked before use.** Restore refuses damaged or oversized files, ignores unexpected fields, and strips invisible characters that can disguise text.
-- **Android app hardening.** No permissions, no other components, backups to the cloud off, cleartext traffic off, file and content access off, it only ever loads its own page, and it refuses all navigation.
+- **Android app hardening.** No internet permission, backups to the cloud off, cleartext traffic off, file and content access off, it only ever loads its own page, and it refuses all navigation. The only permissions are for notifications: showing them, exact reminder times, and setting reminders again after a restart.
+- **Hide from screenshots (Tools > App lock).** In the Android app you can block screenshots, screen recording, and the recent-apps preview.
 
-What the lock cannot cover: someone who knows or watches your passcode, a phone that is already compromised, screenshots or the recent-apps preview, and unencrypted backups you choose to export. Without the lock, Android still keeps the app's data private from other apps; if you use the HTML file in a browser instead, other local pages opened in that same browser could read it, so prefer the Android app or turn the lock on.
+What the lock cannot cover: someone who knows or watches your passcode, a phone that is already compromised, screenshots (unless you turn on the screenshot block), and unencrypted backups you choose to export. With the lock on, the text of upcoming reminders is stored without encryption so the phone can show it while the app is closed; choose **Never show task names** to keep task names out of it. Without the lock, Android still keeps the app's data private from other apps; if you use the HTML file in a browser instead, other local pages opened in that same browser could read it, so prefer the Android app or turn the lock on.
 
 ## Installing on Android
 
@@ -69,11 +71,12 @@ Coming from the original Morning Missions 1.0 app, do this once, because 1.0 was
 
 ## For developers
 
-- Tests: `node tests/planner.test.js` (needs the `playwright` package and Chromium).
-- Rebuild the APK after editing the HTML:
-  `python3 build/build_apk.py --key path/to/key.pem --cert path/to/cert.pem --version-code N --version-name X.Y.Z`
-  The script swaps the HTML into `build/wrapper.apk` (the native shell), sets the home-screen name (`--label`), and signs with APK Signature Scheme v2. It needs Python 3 with the `cryptography` package.
+- Tests: `node tests/planner.test.js` (needs the `playwright` package and Chromium). The native reminder logic has JUnit tests in `android/app/src/test`.
+- The Android app lives in `android/` (Java, no libraries). It shows `Daily_Missions.html` from its assets, which the build copies in. Open the folder in Android Studio, or build with `gradle -p android assembleRelease`.
+- GitHub Actions (`.github/workflows/android.yml`) builds the app unsigned on every change, runs the unit tests, and commits the result to `build/shell/app-release-unsigned.apk`. Sign it outside GitHub, so the key never goes there:
+  `python3 build/build_apk.py --shell build/shell/app-release-unsigned.apk --key path/to/key.pem --cert path/to/cert.pem`
+  The script puts the current HTML in, aligns the APK, and signs it with APK Signature Scheme v2. It needs Python 3 with the `cryptography` package. Bump `versionCode` and `versionName` in `android/app/build.gradle` for each release.
 - After editing the HTML, run `python3 build/csp.py` to refresh the script hashes in the Content Security Policy. The APK build refuses to run if they are out of date, and the tests check them too.
-- The build turns off the WebView's content:// access by patching one instruction in the known `classes.dex` from `build/wrapper.apk` (it refuses to patch any other file).
+- `build/wrapper.apk` is the original prebuilt shell, kept for reference; building from it (without `--shell`) produces the older app without notifications.
 - The signing key is not in this repository. Keep it private and reuse it for every update. It can be a password-protected PEM (set `DM_KEY_PASSWORD` or type it when asked); for example `openssl pkcs8 -topk8 -v2 aes-256-cbc -in key.pem -out key-protected.pem`.
 - Saved data still uses the `morning-missions-v3` storage key and the app keeps the package id `com.morningmissions.tracker`, so updates keep existing data.
