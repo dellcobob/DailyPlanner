@@ -72,6 +72,7 @@ Coming from the original Morning Missions 1.0 app, do this once, because 1.0 was
 ## For developers
 
 - Tests: `node tests/planner.test.js` (needs the `playwright` package and Chromium). The native reminder logic has JUnit tests in `android/app/src/test`.
+- The app icon is the "Quest Ring" set in `android/app/src/main/res` (layered icon, themed one-color icon, and sized PNGs); the status bar icon is made from its one-color layer, and `android/playstore/` has the 512 x 512 image for a Play Store listing.
 - The Android app lives in `android/` (Java, no libraries). It shows `Daily_Missions.html` from its assets, which the build copies in. Open the folder in Android Studio, or build with `gradle -p android assembleRelease`.
 - GitHub Actions (`.github/workflows/android.yml`) builds the app unsigned on every change, runs the unit tests, and commits the result to `build/shell/app-release-unsigned.apk`. Sign it outside GitHub, so the key never goes there:
   `python3 build/build_apk.py --shell build/shell/app-release-unsigned.apk --key path/to/key.pem --cert path/to/cert.pem`

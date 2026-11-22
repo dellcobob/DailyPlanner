@@ -1,12 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Status bar icon: one color, Android tints it. -->
+<!-- Status bar icon: the Quest Ring artwork in one color. Android tints it; only shape and opacity matter. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp"
-    android:viewportWidth="24" android:viewportHeight="24">
-    <path android:pathData="M12,2.6 L20.1,7.3 L20.1,16.7 L12,21.4 L3.9,16.7 L3.9,7.3 Z"
-        android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.9" android:strokeLineJoin="round" />
-    <path android:pathData="M8,14.6 A4,4 0 0,1 16,14.6 M7.4,17.2 L16.6,17.2 M12,7.6 L12,9.6"
-        android:fillColor="#00000000" android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.9" android:strokeLineCap="round" />
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <group>
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeAlpha="0.38"
+            android:strokeWidth="66"
+            android:strokeLineCap="round"
+            android:pathData="M172.56 531.55A340 340 0 0 1 214.66 347.11M285.08 258.81A340 340 0 0 1 455.53 176.72" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="66"
+            android:strokeLineCap="round"
+            android:pathData="M568.47 176.72A340 340 0 0 1 738.92 258.81M809.34 347.11A340 340 0 0 1 851.44 531.55M826.3 641.66A340 340 0 0 1 708.35 789.57M606.59 838.58A340 340 0 0 1 417.41 838.58M315.65 789.57A340 340 0 0 1 197.7 641.66" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M318.88 403.71A60.69 60.69 0 0 1 379.57 343.02H405.58V367.86A30.555 30.555 0 0 0 466.69 367.86V343.02H557.31V367.86A30.555 30.555 0 0 0 618.42 367.86V343.02H644.42A60.69 60.69 0 0 1 705.11 403.71V446.48H318.88Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M419.58 320.96A16.555 16.555 0 0 1 452.69 320.96V367.86A16.555 16.555 0 0 1 419.58 367.86ZM571.31 320.96A16.555 16.555 0 0 1 604.42 320.96V367.86A16.555 16.555 0 0 1 571.31 367.86Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillAlpha="0.5"
+            android:pathData="M318.88 446.48H705.11V620.28A60.69 60.69 0 0 1 644.42 680.97H379.57A60.69 60.69 0 0 1 318.88 620.28Z" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="49.66"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M434.75 564.42L485.79 615.46L589.25 512" />
+    </group>
 </vector>
