@@ -1,0 +1,1162 @@
+#  Tech Kit core module.
+#  Loaded by the GUI, by the background worker runspace, by the elevated runner
+#  and by the pop-out console. Must stay compatible with Windows PowerShell 5.1
+#  and PowerShell 7 (no ternary, no ??, no ForEach-Object -Parallel).
+
+Set-StrictMode -Off
+
+$script:TKRoot = Split-Path -Path $PSScriptRoot -Parent
+$script:MetaOrder = @('Name', 'Description', 'Admin', 'Changes', 'Target', 'Connect', 'Scopes', 'Modules', 'Shell', 'OS', 'Tags', 'Author', 'Version')
+
+# ----------------------------------------------------------------------------
+#  Paths and environment
+# ----------------------------------------------------------------------------
+
+function Get-TKRoot {
+    $script:TKRoot
+}
+
+function Get-TKPath {
+    param([ValidateSet('Scripts', 'Modules', 'Config', 'Reports', 'Runtimes', 'Templates', 'Certs', 'Core', 'Gui', 'Tools')][string]$Name)
+    switch ($Name) {
+        'Gui' { Join-Path $script:TKRoot 'Core\Gui' }
+        default { Join-Path $script:TKRoot $Name }
+    }
+}
+
+function Initialize-TKEnvironment {
+    # Put the USB Modules folder first so modules carried on the drive win.
+    $mods = Get-TKPath Modules
+    if (-not (Test-Path -LiteralPath $mods)) { $null = New-Item -ItemType Directory -Path $mods -Force -ErrorAction SilentlyContinue }
+    $parts = @($env:PSModulePath -split ';' | Where-Object { $_ })
+    if ($parts -notcontains $mods) {
+        $env:PSModulePath = (@($mods) + $parts) -join ';'
+    }
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    } catch { }
+}
+
+function Import-TKHostType {
+    if (-not ('TechKit.OutputSink' -as [type])) {
+        Add-Type -Path (Join-Path $PSScriptRoot 'TechKit.Host.cs') -ErrorAction Stop
+    }
+}
+
+function Test-TKAdmin {
+    try {
+        $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+        (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    } catch {
+        $false
+    }
+}
+
+function Test-TKLocalName {
+    param([string]$Name)
+    $n = $Name.Trim().ToLowerInvariant()
+    if ($n -in @('', '.', 'localhost', '127.0.0.1', '::1')) { return $true }
+    $me = $env:COMPUTERNAME.ToLowerInvariant()
+    if ($n -eq $me) { return $true }
+    if ($n.StartsWith($me + '.')) { return $true }
+    $false
+}
+
+function Get-TKShellInfo {
+    $current = (Get-Process -Id $PID).Path
+    $pwsh = $null
+    $candidates = @(
+        (Join-Path $script:TKRoot 'Runtimes\pwsh\pwsh.exe'),
+        (Join-Path $env:ProgramFiles 'PowerShell\7\pwsh.exe')
+    )
+    foreach ($c in $candidates) { if ($c -and (Test-Path -LiteralPath $c)) { $pwsh = $c; break } }
+    if (-not $pwsh) {
+        $cmd = Get-Command pwsh.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($cmd) { $pwsh = $cmd.Source }
+    }
+    $winps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    if (-not (Test-Path -LiteralPath $winps)) { $winps = $null }
+    [pscustomobject]@{
+        Current        = $current
+        Edition        = $PSVersionTable.PSEdition
+        Version        = $PSVersionTable.PSVersion.ToString()
+        Pwsh           = $pwsh
+        WindowsPS      = $winps
+        WindowsTerminal = (Get-Command wt.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
+    }
+}
+
+function Unblock-TKFiles {
+    # Files copied out of a downloaded zip are marked as "from the internet",
+    # which stops .NET from loading module DLLs. Clear that mark once.
+    param([switch]$Force)
+    $marker = Join-Path (Get-TKPath Config) '.unblocked'
+    $modules = Get-TKPath Modules
+    $needed = $Force -or -not (Test-Path -LiteralPath $marker)
+    if (-not $needed -and (Test-Path -LiteralPath $modules)) {
+        $stamp = (Get-Item -LiteralPath $marker).LastWriteTime
+        $newer = Get-ChildItem -LiteralPath $modules -Directory -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $stamp } | Select-Object -First 1
+        if ($newer) { $needed = $true }
+    }
+    if (-not $needed) { return }
+    Write-Host 'Preparing Tech Kit files (one-time unblock)...' -ForegroundColor DarkGray
+    Get-ChildItem -LiteralPath $script:TKRoot -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+    try { Set-Content -LiteralPath $marker -Value (Get-Date -Format o) -ErrorAction Stop } catch { }
+}
+
+# ----------------------------------------------------------------------------
+#  Settings and themes
+# ----------------------------------------------------------------------------
+
+function ConvertTo-TKHashtable {
+    param($InputObject)
+    if ($null -eq $InputObject) { return $null }
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        $h = [ordered]@{}
+        foreach ($k in $InputObject.Keys) { $h[$k] = ConvertTo-TKHashtable $InputObject[$k] }
+        return $h
+    }
+    if ($InputObject -is [System.Management.Automation.PSCustomObject]) {
+        $h = [ordered]@{}
+        foreach ($p in $InputObject.PSObject.Properties) { $h[$p.Name] = ConvertTo-TKHashtable $p.Value }
+        return $h
+    }
+    if ($InputObject -is [array]) {
+        return , @($InputObject | ForEach-Object { ConvertTo-TKHashtable $_ })
+    }
+    $InputObject
+}
+
+function Get-TKThemeKeys {
+    @('Background', 'Panel', 'Card', 'Border', 'Text', 'SubText', 'Accent', 'AccentText',
+      'OutputBackground', 'Output', 'Info', 'Success', 'Warning', 'Error', 'Verbose', 'Command')
+}
+
+function Get-TKThemes {
+    $file = Join-Path (Get-TKPath Config) 'themes.json'
+    $themes = [ordered]@{}
+    if (Test-Path -LiteralPath $file) {
+        try {
+            $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+            foreach ($p in $json.PSObject.Properties) { $themes[$p.Name] = ConvertTo-TKHashtable $p.Value }
+        } catch {
+            Write-Warning "themes.json could not be read: $($_.Exception.Message)"
+        }
+    }
+    if ($themes.Count -eq 0) {
+        $themes['Midnight'] = [ordered]@{
+            Background = '#1B1D23'; Panel = '#15171C'; Card = '#23262E'; Border = '#343844'
+            Text = '#E4E6EB'; SubText = '#9AA1AE'; Accent = '#4F9DFF'; AccentText = '#0B0D12'
+            OutputBackground = '#0F1115'; Output = '#D7DAE0'; Info = '#5CC8E8'; Success = '#6BD28A'
+            Warning = '#F2C35B'; Error = '#FF6B6B'; Verbose = '#7C8494'; Command = '#B794F6'
+        }
+    }
+    $themes
+}
+
+function Get-TKDefaultSettings {
+    [ordered]@{
+        ThemeName          = 'Midnight'
+        Colors             = $null
+        FontFamily         = 'Cascadia Mono'
+        FontSize           = 13
+        PreferredShell     = 'Auto'
+        UseWindowsTerminal = $true
+        WordWrap           = $false
+        OutputWidth        = 220
+        ReportFolder       = ''
+        Favorites          = @()
+        DefaultScopes      = ''
+        LastTenantProfile  = ''
+        ConfirmChanges     = $true
+    }
+}
+
+function Get-TKSettings {
+    $settings = Get-TKDefaultSettings
+    $file = Join-Path (Get-TKPath Config) 'settings.json'
+    if (Test-Path -LiteralPath $file) {
+        try {
+            $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+            foreach ($p in $json.PSObject.Properties) { $settings[$p.Name] = ConvertTo-TKHashtable $p.Value }
+        } catch {
+            Write-Warning "settings.json could not be read, using defaults: $($_.Exception.Message)"
+        }
+    }
+    $themes = Get-TKThemes
+    $base = $themes[$settings.ThemeName]
+    if (-not $base) { $base = $themes[@($themes.Keys)[0]] }
+    if (-not $settings.Colors) { $settings.Colors = [ordered]@{} }
+    foreach ($k in Get-TKThemeKeys) {
+        if (-not $settings.Colors[$k]) { $settings.Colors[$k] = $base[$k] }
+    }
+    $settings.Favorites = @($settings.Favorites | Where-Object { $_ })
+    $settings
+}
+
+function Save-TKSettings {
+    param([Parameter(Mandatory)][System.Collections.IDictionary]$Settings)
+    $file = Join-Path (Get-TKPath Config) 'settings.json'
+    $Settings | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $file -Encoding UTF8 -ErrorAction Stop
+}
+
+function Get-TKTenantProfiles {
+    $file = Join-Path (Get-TKPath Config) 'tenants.json'
+    if (-not (Test-Path -LiteralPath $file)) { return @() }
+    try {
+        @(Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json)
+    } catch { @() }
+}
+
+function Save-TKTenantProfiles {
+    param([object[]]$Profiles)
+    $file = Join-Path (Get-TKPath Config) 'tenants.json'
+    ConvertTo-Json -InputObject @($Profiles) -Depth 4 | Set-Content -LiteralPath $file -Encoding UTF8
+}
+
+# ----------------------------------------------------------------------------
+#  Script discovery and metadata
+# ----------------------------------------------------------------------------
+
+function ConvertTo-TKBool {
+    param($Value)
+    if ($null -eq $Value) { return $false }
+    ([string]$Value).Trim() -match '^(y|yes|true|1|on)$'
+}
+
+function ConvertTo-TKList {
+    param([string]$Value)
+    if (-not $Value) { return @() }
+    @($Value -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+}
+
+function Get-TKAstValue {
+    param($Ast)
+    if ($null -eq $Ast) { return $null }
+    if ($Ast -is [System.Management.Automation.Language.ConstantExpressionAst]) { return $Ast.Value }
+    try { return $Ast.SafeGetValue() } catch { return $null }
+}
+
+function Read-TKHeader {
+    # Reads "# @Key: value" lines from the top of a script (works for .ps1, .py and .sh).
+    param([Parameter(Mandatory)][string]$Path)
+    $meta = [ordered]@{}
+    $params = New-Object System.Collections.Generic.List[string]
+    $lines = Get-Content -LiteralPath $Path -TotalCount 150 -Encoding UTF8 -ErrorAction Stop
+    foreach ($line in $lines) {
+        if ($line -match '^\s*#\s*@([A-Za-z][\w-]*)\s*:\s?(.*)$') {
+            $key = $Matches[1]
+            $val = $Matches[2].Trim()
+            if ($key -eq 'Param') { $params.Add($val) } else { $meta[$key] = $val }
+        }
+    }
+    [pscustomobject]@{ Meta = $meta; Params = $params.ToArray() }
+}
+
+function Get-TKPsParameters {
+    # Uses the PowerShell parser to turn a script's param() block into GUI fields.
+    param([Parameter(Mandatory)][string]$Path)
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$errors)
+    $result = [ordered]@{
+        Params         = @()
+        SupportsWhatIf = $false
+        Errors         = @($errors | ForEach-Object { "Line $($_.Extent.StartLineNumber): $($_.Message)" })
+    }
+    $pb = $ast.ParamBlock
+    if (-not $pb) { return [pscustomobject]$result }
+
+    foreach ($attr in $pb.Attributes) {
+        if ($attr.TypeName.Name -eq 'CmdletBinding') {
+            foreach ($na in $attr.NamedArguments) {
+                if ($na.ArgumentName -eq 'SupportsShouldProcess') {
+                    if ($na.ExpressionOmitted -or (Get-TKAstValue $na.Argument) -eq $true -or $na.Argument.Extent.Text -match 'true') {
+                        $result.SupportsWhatIf = $true
+                    }
+                }
+            }
+        }
+    }
+
+    $list = New-Object System.Collections.Generic.List[object]
+    foreach ($p in $pb.Parameters) {
+        $name = $p.Name.VariablePath.UserPath
+        $typeName = 'string'
+        $mandatory = $false
+        $help = ''
+        $choices = @()
+        foreach ($a in $p.Attributes) {
+            if ($a -is [System.Management.Automation.Language.TypeConstraintAst]) {
+                $typeName = $a.TypeName.FullName
+            } elseif ($a -is [System.Management.Automation.Language.AttributeAst]) {
+                switch ($a.TypeName.Name) {
+                    'Parameter' {
+                        foreach ($na in $a.NamedArguments) {
+                            if ($na.ArgumentName -eq 'Mandatory') {
+                                if ($na.ExpressionOmitted -or (Get-TKAstValue $na.Argument) -eq $true -or $na.Argument.Extent.Text -match 'true') { $mandatory = $true }
+                            } elseif ($na.ArgumentName -eq 'HelpMessage') {
+                                $help = [string](Get-TKAstValue $na.Argument)
+                            }
+                        }
+                    }
+                    'ValidateSet' {
+                        $choices = @($a.PositionalArguments | ForEach-Object { [string](Get-TKAstValue $_) })
+                    }
+                }
+            }
+        }
+        $t = $typeName.ToLowerInvariant() -replace '^system\.', '' -replace '^management\.automation\.', ''
+        $kind = 'String'
+        if ($choices.Count -gt 0) { $kind = 'Choice' }
+        elseif ($t -in @('switch', 'switchparameter')) { $kind = 'Switch' }
+        elseif ($t -in @('bool', 'boolean')) { $kind = 'Bool' }
+        elseif ($t -in @('int', 'int32', 'int64', 'long', 'uint32', 'byte', 'int16', 'double', 'decimal', 'single', 'float')) { $kind = 'Number' }
+        elseif ($t -in @('securestring', 'security.securestring')) { $kind = 'Secure' }
+        elseif ($t -in @('pscredential')) { $kind = 'Credential' }
+        elseif ($t -in @('datetime')) { $kind = 'Date' }
+        elseif ($t -match '\[\]$') { $kind = 'List' }
+
+        $default = $null
+        $defaultText = ''
+        if ($p.DefaultValue) {
+            $default = Get-TKAstValue $p.DefaultValue
+            if ($null -eq $default) { $defaultText = $p.DefaultValue.Extent.Text }
+            elseif ($default -is [array]) { $default = ($default -join ', ') }
+        }
+        $list.Add([pscustomobject]@{
+            Name        = $name
+            Kind        = $kind
+            TypeName    = $typeName
+            Mandatory   = $mandatory
+            Help        = $help
+            Choices     = $choices
+            Default     = $default
+            DefaultText = $defaultText
+        })
+    }
+    $result.Params = $list.ToArray()
+    [pscustomobject]$result
+}
+
+function ConvertFrom-TKParamLine {
+    # "# @Param: Name | type | default | help"  (append ! to the type for mandatory)
+    param([string]$Line)
+    $parts = @($Line -split '\|' | ForEach-Object { $_.Trim() })
+    $name = $parts[0]
+    $type = 'string'
+    if ($parts.Count -gt 1 -and $parts[1]) { $type = $parts[1] }
+    $mandatory = $type.EndsWith('!')
+    $type = $type.TrimEnd('!').ToLowerInvariant()
+    $choices = @()
+    $kind = 'String'
+    if ($type -match '^choice\((.*)\)$') { $kind = 'Choice'; $choices = ConvertTo-TKList ($Matches[1] -replace '/', ',') }
+    elseif ($type -in @('int', 'number')) { $kind = 'Number' }
+    elseif ($type -in @('switch', 'flag')) { $kind = 'Switch' }
+    elseif ($type -eq 'bool') { $kind = 'Bool' }
+    elseif ($type -in @('secure', 'password')) { $kind = 'Secure' }
+    elseif ($type -eq 'list') { $kind = 'List' }
+    $default = $null
+    if ($parts.Count -gt 2 -and $parts[2]) { $default = $parts[2] }
+    $help = ''
+    if ($parts.Count -gt 3) { $help = ($parts[3..($parts.Count - 1)] -join ' | ') }
+    [pscustomobject]@{
+        Name = $name; Kind = $kind; TypeName = $type; Mandatory = $mandatory; Help = $help
+        Choices = $choices; Default = $default; DefaultText = ''
+    }
+}
+
+function Get-TKCategoryName {
+    param([string]$Folder)
+    ($Folder -replace '^\d+\s*[-_.]?\s*', '').Trim()
+}
+
+function Get-TKScript {
+    [CmdletBinding()]
+    param([string]$ScriptsRoot = (Get-TKPath Scripts))
+    if (-not (Test-Path -LiteralPath $ScriptsRoot)) { return }
+    $rootFull = (Resolve-Path -LiteralPath $ScriptsRoot).Path.TrimEnd('\', '/')
+    $files = Get-ChildItem -LiteralPath $rootFull -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -in @('.ps1', '.py', '.sh') -and -not $_.Name.StartsWith('_') }
+
+    foreach ($f in $files) {
+        try {
+            $rel = $f.FullName.Substring($rootFull.Length).TrimStart('\', '/')
+            $segments = @($rel -split '[\\/]')
+            $folder = 'Uncategorized'
+            if ($segments.Count -gt 1) { $folder = $segments[0] }
+            $header = Read-TKHeader -Path $f.FullName
+            $m = $header.Meta
+            $language = switch ($f.Extension.ToLowerInvariant()) { '.ps1' { 'PowerShell' } '.py' { 'Python' } '.sh' { 'Bash' } }
+
+            $params = @()
+            $whatIf = $false
+            $parseErrors = @()
+            if ($language -eq 'PowerShell') {
+                $pinfo = Get-TKPsParameters -Path $f.FullName
+                $params = @($pinfo.Params)
+                $whatIf = [bool]$pinfo.SupportsWhatIf
+                $parseErrors = @($pinfo.Errors)
+            } else {
+                $params = @($header.Params | ForEach-Object { ConvertFrom-TKParamLine $_ })
+            }
+            if ($m.Contains('WhatIf')) { $whatIf = ConvertTo-TKBool $m['WhatIf'] }
+
+            $targets = ConvertTo-TKList $m['Target']
+            if ($targets.Count -eq 0) { $targets = @('Local') }
+            $connect = ConvertTo-TKList $m['Connect']
+            if ($connect.Count -gt 0 -and $targets -notcontains 'M365') { $targets = @($targets) + 'M365' }
+
+            $category = $m['Category']
+            if (-not $category) { $category = Get-TKCategoryName $folder }
+            $name = $m['Name']
+            if (-not $name) { $name = [IO.Path]::GetFileNameWithoutExtension($f.Name) }
+
+            $admin = ConvertTo-TKBool $m['Admin']
+            $changes = ConvertTo-TKBool $m['Changes']
+            $remote = ($targets -contains 'Remote') -or ($targets -contains 'SSH')
+
+            $badges = New-Object System.Collections.Generic.List[string]
+            if ($admin) { $badges.Add('ADMIN') }
+            if ($changes) { $badges.Add('CHANGES') }
+            if ($remote) { $badges.Add('REMOTE') }
+            if ($connect.Count -gt 0) { $badges.Add('M365') }
+            if ($language -eq 'Python') { $badges.Add('PY') }
+            if ($language -eq 'Bash') { $badges.Add('SH') }
+            if ($parseErrors.Count -gt 0) { $badges.Add('ERROR') }
+
+            [pscustomobject]@{
+                Id             = $rel
+                Path           = $f.FullName
+                FileName       = $f.Name
+                Language       = $language
+                Name           = $name
+                Description    = [string]$m['Description']
+                Category       = $category
+                CategoryFolder = $folder
+                Admin          = $admin
+                Changes        = $changes
+                WhatIf         = $whatIf
+                Targets        = $targets
+                SupportsRemote = $remote
+                Connect        = $connect
+                Scopes         = ConvertTo-TKList $m['Scopes']
+                Modules        = ConvertTo-TKList $m['Modules']
+                Shell          = ConvertTo-TKList $m['Shell']
+                OS             = [string]$m['OS']
+                Tags           = ConvertTo-TKList $m['Tags']
+                Author         = [string]$m['Author']
+                Version        = [string]$m['Version']
+                Params         = $params
+                ParseErrors    = $parseErrors
+                Badges         = $badges.ToArray()
+                Meta           = $m
+                ParamLines     = $header.Params
+                SearchText     = (($name, $m['Description'], $category, $m['Tags'], $f.Name) -join ' ').ToLowerInvariant()
+            }
+        } catch {
+            Write-Warning "Skipped $($f.FullName): $($_.Exception.Message)"
+        }
+    }
+}
+
+function Split-TKScriptFile {
+    # Splits a script into shebang, header lines and body (used by the editor).
+    param([Parameter(Mandatory)][string]$Path)
+    $all = @(Get-Content -LiteralPath $Path -Encoding UTF8)
+    $shebang = ''
+    $i = 0
+    if ($all.Count -gt 0 -and $all[0].StartsWith('#!')) { $shebang = $all[0]; $i = 1 }
+    while ($i -lt $all.Count -and ($all[$i] -match '^\s*#\s*@[A-Za-z]' -or ($all[$i].Trim() -eq '' -and $i -lt 3))) { $i++ }
+    while ($i -lt $all.Count -and $all[$i].Trim() -eq '') { $i++ }
+    $body = ''
+    if ($i -lt $all.Count) { $body = ($all[$i..($all.Count - 1)] -join "`r`n") }
+    [pscustomobject]@{ Shebang = $shebang; Body = $body }
+}
+
+function Format-TKHeader {
+    param(
+        [System.Collections.IDictionary]$Meta,
+        [string[]]$ParamLines = @()
+    )
+    $lines = New-Object System.Collections.Generic.List[string]
+    $keys = @($script:MetaOrder) + @($Meta.Keys | Where-Object { $script:MetaOrder -notcontains $_ })
+    foreach ($k in $keys) {
+        if (-not $Meta.Contains($k)) { continue }
+        $v = [string]$Meta[$k]
+        if ($v.Trim() -eq '') { continue }
+        $lines.Add(('# @{0,-13}{1}' -f ($k + ':'), $v.Trim()))
+    }
+    foreach ($p in $ParamLines) { if ($p.Trim()) { $lines.Add(('# @{0,-13}{1}' -f 'Param:', $p.Trim())) } }
+    $lines.ToArray()
+}
+
+function Set-TKScriptContent {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Meta,
+        [string[]]$ParamLines = @(),
+        [string]$Body = '',
+        [string]$Shebang = ''
+    )
+    $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+    $out = New-Object System.Collections.Generic.List[string]
+    if ($Shebang) { $out.Add($Shebang) }
+    elseif ($ext -eq '.sh') { $out.Add('#!/usr/bin/env bash') }
+    elseif ($ext -eq '.py') { $out.Add('#!/usr/bin/env python3') }
+    foreach ($l in (Format-TKHeader -Meta $Meta -ParamLines $ParamLines)) { $out.Add($l) }
+    $out.Add('')
+    $out.Add($Body.TrimEnd())
+    $text = ($out -join "`n")
+    if ($ext -eq '.ps1') {
+        $text = $text -replace "`r?`n", "`r`n"
+        # UTF-8 with BOM so Windows PowerShell 5.1 reads non-ASCII characters correctly
+        [IO.File]::WriteAllText($Path, $text + "`r`n", (New-Object System.Text.UTF8Encoding($true)))
+    } else {
+        $text = $text -replace "`r`n", "`n"
+        [IO.File]::WriteAllText($Path, $text + "`n", (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
+
+function Test-TKScriptSyntax {
+    param([Parameter(Mandatory)][string]$Text)
+    $tokens = $null
+    $errors = $null
+    $null = [System.Management.Automation.Language.Parser]::ParseInput($Text, [ref]$tokens, [ref]$errors)
+    @($errors | ForEach-Object { "Line $($_.Extent.StartLineNumber): $($_.Message)" })
+}
+
+# ----------------------------------------------------------------------------
+#  Running scripts (used inside the worker runspace and the elevated runner)
+# ----------------------------------------------------------------------------
+
+function New-TKRunspace {
+    param(
+        [Parameter(Mandatory)]$Sink,
+        [string]$HostName = 'Tech Kit'
+    )
+    Import-TKHostType
+    $hostObject = New-Object TechKit.Host -ArgumentList $Sink, $HostName
+    $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    try { $iss.ExecutionPolicy = [Microsoft.PowerShell.ExecutionPolicy]::Bypass } catch { }
+    $iss.ImportPSModule([string[]]@((Join-Path $PSScriptRoot 'TechKit.Core.psm1')))
+    $iss.Variables.Add((New-Object System.Management.Automation.Runspaces.SessionStateVariableEntry('TKSink', $Sink, 'Tech Kit output sink')))
+    $rs = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace($hostObject, $iss)
+    $rs.ApartmentState = [System.Threading.ApartmentState]::STA
+    $rs.ThreadOptions = [System.Management.Automation.Runspaces.PSThreadOptions]::ReuseThread
+    $rs.Open()
+
+    $init = [PowerShell]::Create()
+    $init.Runspace = $rs
+    $null = $init.AddScript({
+        $global:TKResults = New-Object System.Collections.Generic.List[object]
+        $global:ProgressPreference = 'Continue'
+        $global:ErrorActionPreference = 'Continue'
+        Initialize-TKEnvironment
+        Set-Location -LiteralPath $HOME
+    })
+    $null = $init.Invoke()
+    $init.Dispose()
+    $rs
+}
+
+function Get-TKOriginPrefix {
+    param($Record)
+    if (-not $global:TKShowOrigin) { return '' }
+    $origin = $null
+    if ($Record.PSObject.Properties['OriginInfo']) { $origin = $Record.OriginInfo }
+    if ($origin -and $origin.PSComputerName) { return '[' + $origin.PSComputerName + '] ' }
+    ''
+}
+
+function Write-TKErrorRecord {
+    param($Sink, $Record)
+    $prefix = Get-TKOriginPrefix $Record
+    $Sink.Add('Error', $prefix + $Record.ToString())
+    $ii = $Record.InvocationInfo
+    if ($ii -and $ii.ScriptLineNumber -gt 0 -and $ii.ScriptName -and $global:TKCurrentScript -and $ii.ScriptName -eq $global:TKCurrentScript) {
+        $Sink.Add('Verbose', ('    at line {0}: {1}' -f $ii.ScriptLineNumber, $ii.Line.Trim()))
+    }
+}
+
+function Out-TKSink {
+    # Final stage of every worker pipeline: turns records and objects into
+    # colored lines for the GUI and keeps the objects for CSV/HTML export.
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true)]$InputObject,
+        [switch]$NoCollect,
+        [int]$Width = 0
+    )
+    begin {
+        $sink = $global:TKSink
+        if ($Width -le 0) {
+            $Width = 220
+            try { $Width = [Math]::Max(80, $Host.UI.RawUI.BufferSize.Width) } catch { }
+        }
+        if (-not $NoCollect) { $global:TKResults = New-Object System.Collections.Generic.List[object] }
+        $formatter = [scriptblock]::Create("Out-String -Stream -Width $Width").GetSteppablePipeline()
+        $formatter.Begin($true)
+    }
+    process {
+        $o = $InputObject
+        if ($null -eq $o) { return }
+        if ($o -is [System.Management.Automation.ErrorRecord]) {
+            Write-TKErrorRecord -Sink $sink -Record $o
+            return
+        }
+        if ($o -is [System.Management.Automation.WarningRecord]) {
+            $sink.Add('Warning', (Get-TKOriginPrefix $o) + 'WARNING: ' + $o.Message)
+            return
+        }
+        if ($o -is [System.Management.Automation.VerboseRecord]) {
+            $sink.Add('Verbose', (Get-TKOriginPrefix $o) + 'VERBOSE: ' + $o.Message)
+            return
+        }
+        if ($o -is [System.Management.Automation.DebugRecord]) {
+            $sink.Add('Debug', (Get-TKOriginPrefix $o) + 'DEBUG: ' + $o.Message)
+            return
+        }
+        if ($o -is [System.Management.Automation.InformationRecord]) {
+            $prefix = Get-TKOriginPrefix $o
+            $md = $o.MessageData
+            if ($null -ne $md -and $md.PSObject.Properties['Message'] -and $md.PSObject.Properties['NoNewLine']) {
+                $color = -1
+                if ($null -ne $md.ForegroundColor) {
+                    try { $color = [int][System.ConsoleColor]$md.ForegroundColor } catch { $color = -1 }
+                }
+                $sink.Add('Host', $prefix + [string]$md.Message, $color, (-not [bool]$md.NoNewLine))
+            } else {
+                $sink.Add('Info', $prefix + [string]$md)
+            }
+            return
+        }
+        if (-not $NoCollect) { $global:TKResults.Add($o) }
+        foreach ($line in $formatter.Process($o)) { $sink.Add('Output', [string]$line) }
+    }
+    end {
+        foreach ($line in $formatter.End()) { $sink.Add('Output', [string]$line) }
+        try { $sink.Location = (Get-Location).Path } catch { }
+    }
+}
+
+function Find-TKInterpreter {
+    param([ValidateSet('python', 'bash', 'ssh')][string]$Name)
+    $root = $script:TKRoot
+    $candidates = @()
+    switch ($Name) {
+        'python' {
+            $candidates = @(
+                (Join-Path $root 'Runtimes\python\python.exe'),
+                (Get-Command py.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source),
+                (Get-Command python.exe -CommandType Application -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Source -notlike '*\WindowsApps\*' } | Select-Object -First 1 -ExpandProperty Source)
+            )
+        }
+        'bash' {
+            $candidates = @(
+                (Join-Path $root 'Runtimes\git\bin\bash.exe'),
+                (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
+                $(if (${env:ProgramFiles(x86)}) { Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe' }),
+                (Join-Path $env:LOCALAPPDATA 'Programs\Git\bin\bash.exe'),
+                (Join-Path $env:WINDIR 'System32\bash.exe')
+            )
+        }
+        'ssh' {
+            $candidates = @(
+                (Join-Path $env:WINDIR 'System32\OpenSSH\ssh.exe'),
+                (Get-Command ssh.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
+            )
+        }
+    }
+    foreach ($c in $candidates) {
+        if ($c -and (Test-Path -LiteralPath $c)) { return $c }
+    }
+    $null
+}
+
+function ConvertTo-TKShellQuote {
+    param([string]$Value)
+    "'" + ($Value -replace "'", "'\''") + "'"
+}
+
+function Invoke-TKNative {
+    # Runs a native program, streaming stdout as output and stderr as red lines.
+    param([string]$FilePath, [string[]]$ArgumentList = @(), [string]$StdIn)
+    # Python, Git Bash and SSH speak UTF-8. Switch the console decoding only while
+    # they run, so Windows tools (ipconfig, netsh) keep their normal code page.
+    $sink = $global:TKSink
+    $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $oldEncoding = $null
+    try { $oldEncoding = [Console]::OutputEncoding; [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
+    try {
+        if ($PSBoundParameters.ContainsKey('StdIn')) {
+            $StdIn | & $FilePath @ArgumentList 2>&1 | ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) { if ($sink) { $sink.Add('Error', $_.ToString()) } else { Write-Warning $_.ToString() } } else { $_ }
+            }
+        } else {
+            & $FilePath @ArgumentList 2>&1 | ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) { if ($sink) { $sink.Add('Error', $_.ToString()) } else { Write-Warning $_.ToString() } } else { $_ }
+            }
+        }
+    } finally {
+        if ($oldEncoding) { try { [Console]::OutputEncoding = $oldEncoding } catch { } }
+    }
+    if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+        Write-Warning "$(Split-Path $FilePath -Leaf) exited with code $LASTEXITCODE"
+    }
+}
+
+function Invoke-TKScript {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [hashtable]$Parameters = @{},
+        [string[]]$Arguments = @(),
+        [string[]]$ComputerName = @(),
+        [System.Management.Automation.PSCredential]$Credential,
+        [switch]$DryRun
+    )
+    $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+    $localTargets = @()
+    $remoteTargets = @()
+    foreach ($c in $ComputerName) {
+        if (-not $c -or -not $c.Trim()) { continue }
+        if (Test-TKLocalName $c) { $localTargets += $c.Trim() } else { $remoteTargets += $c.Trim() }
+    }
+    $runLocal = ($remoteTargets.Count -eq 0) -or ($localTargets.Count -gt 0)
+    $global:TKShowOrigin = ($remoteTargets.Count -gt 0)
+    $global:TKCurrentScript = $Path
+
+    switch ($ext) {
+        '.ps1' {
+            $p = @{}
+            foreach ($k in $Parameters.Keys) { $p[$k] = $Parameters[$k] }
+            if ($DryRun) { $p['WhatIf'] = $true }
+            if ($runLocal) {
+                try {
+                    & $Path @p
+                } catch {
+                    Write-Error -ErrorRecord $_
+                }
+            }
+            if ($remoteTargets.Count -gt 0) {
+                $code = [IO.File]::ReadAllText($Path)
+                $icm = @{
+                    ComputerName = $remoteTargets
+                    ScriptBlock  = { param($TKCode, $TKParams) $sb = [scriptblock]::Create($TKCode); & $sb @TKParams }
+                    ArgumentList = @($code, $p)
+                    ErrorAction  = 'Continue'
+                }
+                if ($Credential) { $icm.Credential = $Credential }
+                try {
+                    Invoke-Command @icm
+                } catch {
+                    Write-Error -ErrorRecord $_
+                }
+            }
+        }
+        '.py' {
+            $py = Find-TKInterpreter -Name python
+            if (-not $py) { throw 'Python was not found. Copy a portable Python into Runtimes\python on the USB, or install Python on this PC.' }
+            if ($remoteTargets.Count -gt 0) { Write-Warning 'Python scripts run on this PC only. Remote targets were ignored.' }
+            $env:PYTHONIOENCODING = 'utf-8'
+            $env:PYTHONUNBUFFERED = '1'
+            $a = @()
+            if ((Split-Path $py -Leaf) -eq 'py.exe') { $a += '-3' }
+            $a += @('-u', $Path) + @($Arguments)
+            if ($DryRun) { $a += '--whatif' }
+            Invoke-TKNative -FilePath $py -ArgumentList $a
+        }
+        '.sh' {
+            $content = ([IO.File]::ReadAllText($Path) -replace "`r`n", "`n") + "`n#"
+            $a = @($Arguments)
+            if ($DryRun) { $a += '--whatif' }
+            if ($runLocal) {
+                $bash = Find-TKInterpreter -Name bash
+                if (-not $bash) { throw 'Bash was not found. Install Git for Windows or WSL, or copy Git Bash into Runtimes\git on the USB.' }
+                Invoke-TKNative -FilePath $bash -ArgumentList (@('-s', '--') + $a) -StdIn $content
+            }
+            if ($remoteTargets.Count -gt 0) {
+                $ssh = Find-TKInterpreter -Name ssh
+                if (-not $ssh) { throw 'ssh.exe was not found. Enable the Windows OpenSSH Client feature.' }
+                $argText = ($a | ForEach-Object { ConvertTo-TKShellQuote $_ }) -join ' '
+                foreach ($t in $remoteTargets) {
+                    Write-Host "=== $t ===" -ForegroundColor Cyan
+                    Invoke-TKNative -FilePath $ssh -ArgumentList @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', $t, "bash -s -- $argText") -StdIn $content
+                }
+            }
+        }
+        default { throw "Unsupported script type: $ext" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+#  Results export
+# ----------------------------------------------------------------------------
+
+function ConvertTo-TKFlatObject {
+    param($InputObject)
+    $skip = @('RunspaceId', 'PSShowComputerName', 'PSSourceJobInstanceId')
+    $h = [ordered]@{}
+    foreach ($p in $InputObject.PSObject.Properties) {
+        if ($skip -contains $p.Name) { continue }
+        if ($p.MemberType -notin @('NoteProperty', 'Property', 'AliasProperty', 'ScriptProperty', 'CodeProperty')) { continue }
+        $v = $null
+        try { $v = $p.Value } catch { $v = $null }
+        if ($null -ne $v -and $v -isnot [string] -and $v -is [System.Collections.IEnumerable] -and $v -isnot [System.Collections.IDictionary]) {
+            $v = (@($v) | ForEach-Object { [string]$_ }) -join '; '
+        } elseif ($v -is [datetime]) {
+            $v = $v.ToString('yyyy-MM-dd HH:mm:ss')
+        }
+        $h[$p.Name] = $v
+    }
+    [pscustomobject]$h
+}
+
+function Get-TKReportPath {
+    param([string]$Name, [string]$Extension, [string]$Folder)
+    if (-not $Folder) { $Folder = Get-TKPath Reports }
+    $day = Join-Path $Folder (Get-Date -Format 'yyyy-MM-dd')
+    if (-not (Test-Path -LiteralPath $day)) { $null = New-Item -ItemType Directory -Path $day -Force }
+    $safe = ($Name -replace '[^\w\- ]', '').Trim() -replace '\s+', '-'
+    if (-not $safe) { $safe = 'TechKit' }
+    Join-Path $day ('{0}_{1}_{2}.{3}' -f $safe, $env:COMPUTERNAME, (Get-Date -Format 'HHmmss'), $Extension)
+}
+
+function Export-TKResult {
+    [CmdletBinding()]
+    param(
+        [ValidateSet('Csv', 'Html')][string]$Format = 'Csv',
+        [string]$Title = 'Tech Kit report',
+        [string]$Subtitle = '',
+        [string]$OutputText = '',
+        [string]$Folder = ''
+    )
+    $items = @($global:TKResults)
+    $objects = @($items | Where-Object { $null -ne $_ -and $_ -isnot [string] -and $_ -isnot [ValueType] } | ForEach-Object { ConvertTo-TKFlatObject $_ })
+    $path = Get-TKReportPath -Name $Title -Extension $Format.ToLowerInvariant() -Folder $Folder
+
+    if ($Format -eq 'Csv') {
+        if ($objects.Count -eq 0) {
+            if (-not $OutputText) { throw 'This run produced no table data to export.' }
+            $path = [IO.Path]::ChangeExtension($path, 'txt')
+            Set-Content -LiteralPath $path -Value $OutputText -Encoding UTF8
+            return $path
+        }
+        $objects | Export-Csv -LiteralPath $path -NoTypeInformation -Encoding UTF8
+        return $path
+    }
+
+    $enc = { param($s) [System.Net.WebUtility]::HtmlEncode([string]$s) }
+    $body = ''
+    if ($objects.Count -gt 0) {
+        $body = ($objects | ConvertTo-Html -Fragment) -join "`n"
+        $body = $body -replace '<td>(PASS|OK|Healthy)</td>', '<td class="good">$1</td>'
+        $body = $body -replace '<td>(FAIL|Critical)</td>', '<td class="bad">$1</td>'
+        $body = $body -replace '<td>(WARN|Warning)</td>', '<td class="warn">$1</td>'
+        $body = "<p class=""count"">$($objects.Count) row(s)</p>`n" + $body
+    }
+    if ($OutputText) {
+        $body += "`n<h2>Output</h2>`n<pre>" + (& $enc $OutputText) + '</pre>'
+    }
+    $css = @'
+body{font-family:"Segoe UI",Arial,sans-serif;margin:0;background:#f5f6f8;color:#1d2330}
+header{background:#1b1d23;color:#fff;padding:22px 32px}
+header h1{margin:0;font-size:22px;font-weight:600}
+header p{margin:6px 0 0;color:#aab2c0;font-size:13px}
+main{padding:20px 32px}
+table{border-collapse:collapse;width:100%;background:#fff;font-size:13px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+th{background:#2b3040;color:#fff;text-align:left;padding:8px 10px;position:sticky;top:0}
+td{padding:6px 10px;border-bottom:1px solid #e6e8ec;vertical-align:top}
+tr:nth-child(even) td{background:#fafbfc}
+td.good{color:#137333;font-weight:600}td.bad{color:#c5221f;font-weight:600}td.warn{color:#b06000;font-weight:600}
+pre{background:#0f1115;color:#d7dae0;padding:14px;border-radius:6px;overflow:auto;font-size:12px}
+.count{color:#5f6878;font-size:12px}
+footer{color:#8a93a3;font-size:11px;padding:10px 32px 24px}
+'@
+    $html = @"
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>$(& $enc $Title)</title><style>$css</style></head>
+<body><header><h1>$(& $enc $Title)</h1><p>$(& $enc $Subtitle)</p></header>
+<main>
+$body
+</main>
+<footer>Generated by Tech Kit on $(Get-Date -Format 'yyyy-MM-dd HH:mm') from $(& $enc $env:COMPUTERNAME)</footer>
+</body></html>
+"@
+    Set-Content -LiteralPath $path -Value $html -Encoding UTF8
+    $path
+}
+
+function Import-TKResult {
+    param([string]$Path)
+    $global:TKResults = New-Object System.Collections.Generic.List[object]
+    if ($Path -and (Test-Path -LiteralPath $Path)) {
+        foreach ($o in (Import-Clixml -LiteralPath $Path)) { $global:TKResults.Add($o) }
+    }
+}
+
+# ----------------------------------------------------------------------------
+#  Modules
+# ----------------------------------------------------------------------------
+
+function Get-TKMissingModule {
+    param([string[]]$Name)
+    foreach ($n in $Name) {
+        if (-not $n) { continue }
+        if (-not (Get-Module -ListAvailable -Name $n -ErrorAction SilentlyContinue)) { $n }
+    }
+}
+
+function Install-TKModule {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string[]]$Name,
+        [ValidateSet('USB', 'CurrentUser')][string]$Destination = 'USB'
+    )
+    Initialize-TKEnvironment
+    $rsat = @('ActiveDirectory', 'GroupPolicy', 'DnsServer', 'DhcpServer')
+    if ($PSVersionTable.PSEdition -eq 'Desktop') {
+        if (-not (Get-PackageProvider -ListAvailable -Name NuGet -ErrorAction SilentlyContinue | Where-Object { $_.Version -ge [version]'2.8.5.201' })) {
+            Write-Host 'Installing the NuGet package provider for the current user...' -ForegroundColor DarkGray
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
+        }
+    }
+    foreach ($n in $Name) {
+        if ($rsat -contains $n) {
+            Write-Warning "$n comes with Windows RSAT, not the PowerShell Gallery. Run 'Install RSAT AD Tools' in the Active Directory category, or put a domain controller name in the Target box."
+            continue
+        }
+        if ($Destination -eq 'USB') {
+            Write-Host "Downloading $n to the USB Modules folder..." -ForegroundColor Cyan
+            Save-Module -Name $n -Path (Get-TKPath Modules) -Repository PSGallery -Force -ErrorAction Stop
+        } else {
+            Write-Host "Installing $n for the current user..." -ForegroundColor Cyan
+            Install-Module -Name $n -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
+        }
+        Write-Host "  $n is ready." -ForegroundColor Green
+    }
+}
+
+function Update-TKModules {
+    # Refreshes every module listed in Config\modules.json on the USB.
+    [CmdletBinding()]
+    param()
+    $file = Join-Path (Get-TKPath Config) 'modules.json'
+    $list = @()
+    if (Test-Path -LiteralPath $file) { $list = @((Get-Content -LiteralPath $file -Raw | ConvertFrom-Json).Modules) }
+    if ($list.Count -eq 0) { $list = @('Microsoft.Graph.Authentication', 'ExchangeOnlineManagement') }
+    Install-TKModule -Name $list -Destination USB
+    Unblock-TKFiles -Force
+    Write-Host 'Module update finished.' -ForegroundColor Green
+}
+
+# ----------------------------------------------------------------------------
+#  Microsoft 365
+# ----------------------------------------------------------------------------
+
+function Select-TKSupportedParams {
+    # Drops parameters that the installed module version does not have.
+    param([string]$Command, [hashtable]$Params)
+    $cmd = Get-Command $Command -ErrorAction Stop
+    $names = @{}
+    foreach ($p in $cmd.Parameters.Values) {
+        $names[$p.Name] = $true
+        foreach ($a in $p.Aliases) { $names[$a] = $true }
+    }
+    $out = @{}
+    foreach ($k in $Params.Keys) {
+        if ($names.ContainsKey($k)) { $out[$k] = $Params[$k] }
+        else { Write-Verbose "$Command does not support -$k in this module version; skipped." }
+    }
+    $out
+}
+
+function Connect-TKM365 {
+    [CmdletBinding()]
+    param(
+        [ValidateSet('Graph', 'Exchange', 'Compliance')][string[]]$Service = @('Graph'),
+        [ValidateSet('Interactive', 'DeviceCode', 'Certificate', 'Secret')][string]$Method = 'Interactive',
+        [string]$TenantId,
+        [string]$ClientId,
+        [string]$CertificateThumbprint,
+        [string]$CertificatePath,
+        [securestring]$CertificatePassword,
+        [securestring]$ClientSecret,
+        [string]$Organization,
+        [string[]]$Scopes = @(),
+        [string]$UserPrincipalName
+    )
+    if (-not $Organization -and $TenantId -and $TenantId -match '\.') { $Organization = $TenantId }
+    if ($Method -in @('Certificate', 'Secret') -and (-not $ClientId -or -not $TenantId)) {
+        throw 'App sign-in needs both a Tenant (ID or domain) and an App (client) ID.'
+    }
+    if ($Method -eq 'Certificate' -and -not $CertificateThumbprint -and -not $CertificatePath) {
+        throw 'Certificate sign-in needs a certificate thumbprint or a .pfx file.'
+    }
+
+    if ($Service -contains 'Graph') {
+        Write-Host 'Connecting to Microsoft Graph...' -ForegroundColor Cyan
+        Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+        $g = @{ NoWelcome = $true; ContextScope = 'Process' }
+        switch ($Method) {
+            'Interactive' {
+                if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) {
+                    try { Set-MgGraphOption -DisableLoginByWAM $true -ErrorAction Stop } catch { }
+                }
+                if ($Scopes.Count) { $g.Scopes = $Scopes }
+                if ($TenantId) { $g.TenantId = $TenantId }
+            }
+            'DeviceCode' {
+                $g.UseDeviceCode = $true
+                if ($Scopes.Count) { $g.Scopes = $Scopes }
+                if ($TenantId) { $g.TenantId = $TenantId }
+                Write-Host 'A sign-in code will appear below. Open https://microsoft.com/devicelogin on any device and enter it.' -ForegroundColor Yellow
+            }
+            'Certificate' {
+                $g.ClientId = $ClientId
+                $g.TenantId = $TenantId
+                if ($CertificateThumbprint) {
+                    $g.CertificateThumbprint = $CertificateThumbprint
+                } else {
+                    $g.Certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath, $CertificatePassword)
+                }
+            }
+            'Secret' {
+                $g.TenantId = $TenantId
+                $g.ClientSecretCredential = New-Object System.Management.Automation.PSCredential($ClientId, $ClientSecret)
+            }
+        }
+        $g = Select-TKSupportedParams -Command Connect-MgGraph -Params $g
+        Connect-MgGraph @g -ErrorAction Stop
+        $ctx = Get-MgContext
+        if ($ctx) {
+            $who = $ctx.Account
+            if (-not $who) { $who = 'app ' + $ctx.AppName }
+            Write-Host "  Graph connected as $who (tenant $($ctx.TenantId))" -ForegroundColor Green
+        }
+    }
+
+    if ($Service -contains 'Exchange' -or $Service -contains 'Compliance') {
+        Import-Module ExchangeOnlineManagement -ErrorAction Stop
+        $e = @{ ShowBanner = $false }
+        $skip = $false
+        switch ($Method) {
+            'Interactive' {
+                $e.DisableWAM = $true
+                if ($UserPrincipalName) { $e.UserPrincipalName = $UserPrincipalName }
+            }
+            'DeviceCode' { $e.Device = $true }
+            'Certificate' {
+                if (-not $Organization) { throw 'Exchange app sign-in needs the tenant''s .onmicrosoft.com domain in the Tenant or Organization box.' }
+                $e.AppId = $ClientId
+                $e.Organization = $Organization
+                if ($CertificateThumbprint) { $e.CertificateThumbprint = $CertificateThumbprint }
+                else { $e.CertificateFilePath = $CertificatePath; $e.CertificatePassword = $CertificatePassword }
+            }
+            'Secret' {
+                Write-Warning 'Exchange Online does not accept client secrets. Use a certificate for app sign-in. Skipping Exchange.'
+                $skip = $true
+            }
+        }
+        if (-not $skip -and $Service -contains 'Exchange') {
+            Write-Host 'Connecting to Exchange Online...' -ForegroundColor Cyan
+            $p = Select-TKSupportedParams -Command Connect-ExchangeOnline -Params $e
+            Connect-ExchangeOnline @p -ErrorAction Stop
+            Write-Host '  Exchange Online connected.' -ForegroundColor Green
+        }
+        if (-not $skip -and $Service -contains 'Compliance') {
+            Write-Host 'Connecting to Security & Compliance...' -ForegroundColor Cyan
+            $p = Select-TKSupportedParams -Command Connect-IPPSSession -Params $e
+            Connect-IPPSSession @p -ErrorAction Stop
+            Write-Host '  Security & Compliance connected.' -ForegroundColor Green
+        }
+    }
+}
+
+function Get-TKM365Status {
+    $s = [ordered]@{
+        Graph = $false; GraphAccount = ''; GraphTenant = ''; GraphScopes = @(); GraphAuthType = ''
+        Exchange = $false; ExchangeAccount = ''; Compliance = $false; Tenant = ''
+    }
+    if (Get-Module -Name Microsoft.Graph.Authentication) {
+        try {
+            $ctx = Get-MgContext
+            if ($ctx) {
+                $s.Graph = $true
+                $s.GraphAccount = [string]$ctx.Account
+                if (-not $s.GraphAccount) { $s.GraphAccount = 'App: ' + $ctx.AppName }
+                $s.GraphTenant = [string]$ctx.TenantId
+                $s.GraphScopes = @($ctx.Scopes)
+                $s.GraphAuthType = [string]$ctx.AuthType
+                $s.Tenant = $s.GraphTenant
+            }
+        } catch { }
+    }
+    if (Get-Module -Name ExchangeOnlineManagement) {
+        try {
+            $ci = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object { $_.State -eq 'Connected' })
+            foreach ($c in $ci) {
+                if ($c.IsEopSession) { $s.Compliance = $true }
+                else {
+                    $s.Exchange = $true
+                    $s.ExchangeAccount = [string]$c.UserPrincipalName
+                    if (-not $s.Tenant) { $s.Tenant = [string]$c.TenantID }
+                }
+            }
+        } catch { }
+    }
+    [pscustomobject]$s
+}
+
+function Disconnect-TKM365 {
+    if (Get-Module -Name Microsoft.Graph.Authentication) {
+        try { Disconnect-MgGraph -ErrorAction Stop | Out-Null; Write-Host 'Disconnected from Microsoft Graph.' -ForegroundColor Yellow } catch { }
+    }
+    if (Get-Module -Name ExchangeOnlineManagement) {
+        try { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop; Write-Host 'Disconnected from Exchange Online / Compliance.' -ForegroundColor Yellow } catch { }
+    }
+}
+
+function Get-TKAllScopes {
+    # Union of the Graph scopes every script in the library declares.
+    $all = @(Get-TKScript | ForEach-Object { $_.Scopes } | Where-Object { $_ } | Sort-Object -Unique)
+    if ($all.Count -eq 0) { $all = @('User.Read.All') }
+    $all
+}
+
+# ----------------------------------------------------------------------------
+#  Target helpers
+# ----------------------------------------------------------------------------
+
+function Get-TKADComputer {
+    # Finds computers in Active Directory with plain LDAP (no RSAT needed).
+    [CmdletBinding()]
+    param(
+        [string]$NameFilter = '*',
+        [string]$SearchBase = '',
+        [switch]$ServersOnly,
+        [switch]$IncludeDisabled
+    )
+    Add-Type -AssemblyName System.DirectoryServices -ErrorAction SilentlyContinue
+    $safe = ($NameFilter -replace '[^\w\-\*\.]', '')
+    if (-not $safe) { $safe = '*' }
+    $filter = "(&(objectCategory=computer)(name=$safe)"
+    if (-not $IncludeDisabled) { $filter += '(!(userAccountControl:1.2.840.113556.1.4.803:=2))' }
+    if ($ServersOnly) { $filter += '(operatingSystem=*Server*)' }
+    $filter += ')'
+    $root = if ($SearchBase) { New-Object System.DirectoryServices.DirectoryEntry("LDAP://$SearchBase") } else { New-Object System.DirectoryServices.DirectoryEntry }
+    $searcher = New-Object System.DirectoryServices.DirectorySearcher($root, $filter)
+    $searcher.PageSize = 1000
+    foreach ($prop in @('name', 'dnshostname', 'operatingsystem')) { $null = $searcher.PropertiesToLoad.Add($prop) }
+    $searcher.FindAll() | ForEach-Object {
+        [pscustomobject]@{
+            Name            = [string]($_.Properties['name'] | Select-Object -First 1)
+            DnsHostName     = [string]($_.Properties['dnshostname'] | Select-Object -First 1)
+            OperatingSystem = [string]($_.Properties['operatingsystem'] | Select-Object -First 1)
+        }
+    } | Sort-Object Name
+}
+
+Export-ModuleMember -Function *

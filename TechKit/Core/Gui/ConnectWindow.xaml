@@ -1,0 +1,90 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Connect to Microsoft 365" Width="600" Height="780" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResize"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI" FontSize="13">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="18,12">
+            <DockPanel>
+                <Button x:Name="BtnDisconnect" DockPanel.Dock="Left" Content="Disconnect all"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnCancel" Content="Cancel" IsCancel="True"/>
+                    <Button x:Name="BtnConnect" Content="Connect" Style="{StaticResource AccentButton}" IsDefault="True" Margin="0" Padding="22,6"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="22,8,22,18">
+                <TextBlock Text="SAVED TENANT PROFILE" Style="{StaticResource SectionLabel}"/>
+                <DockPanel>
+                    <Button x:Name="BtnDeleteProfile" DockPanel.Dock="Right" Content="Delete" Margin="6,0,0,0"/>
+                    <ComboBox x:Name="CmbProfile"/>
+                </DockPanel>
+                <TextBlock Text="Profiles store tenant and app IDs only. Passwords and secrets are never saved."
+                           FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0"/>
+
+                <TextBlock Text="SERVICES" Style="{StaticResource SectionLabel}"/>
+                <CheckBox x:Name="ChkGraph" Content="Microsoft Graph  (users, groups, licenses, Entra ID, sign-ins)" IsChecked="True" Margin="0,0,0,6"/>
+                <CheckBox x:Name="ChkExchange" Content="Exchange Online  (mailboxes, permissions, forwarding)" Margin="0,0,0,6"/>
+                <CheckBox x:Name="ChkCompliance" Content="Security &amp; Compliance  (Purview, message trace, eDiscovery)"/>
+
+                <TextBlock Text="SIGN-IN METHOD" Style="{StaticResource SectionLabel}"/>
+                <RadioButton x:Name="RbInteractive" GroupName="M" Content="Interactive  (a Microsoft sign-in window opens)" IsChecked="True" Margin="0,0,0,6"/>
+                <RadioButton x:Name="RbDevice" GroupName="M" Content="Device code  (sign in from your phone or another PC)" Margin="0,0,0,6"/>
+                <RadioButton x:Name="RbCert" GroupName="M" Content="App registration + certificate  (no prompt, good for repeat visits)" Margin="0,0,0,6"/>
+                <RadioButton x:Name="RbSecret" GroupName="M" Content="App registration + client secret  (Microsoft Graph only)"/>
+
+                <TextBlock Text="TENANT" Style="{StaticResource SectionLabel}"/>
+                <TextBox x:Name="TxtTenant"/>
+                <TextBlock Text="Tenant ID or domain (contoso.onmicrosoft.com). Optional for interactive and device code."
+                           FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+                <StackPanel x:Name="PnlUpn">
+                    <TextBlock Text="ADMIN ACCOUNT (OPTIONAL)" Style="{StaticResource SectionLabel}"/>
+                    <TextBox x:Name="TxtUpn"/>
+                    <TextBlock Text="Pre-fills the Exchange sign-in. Example: admin@contoso.com"
+                               FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel x:Name="PnlApp" Visibility="Collapsed">
+                    <TextBlock Text="APP (CLIENT) ID" Style="{StaticResource SectionLabel}"/>
+                    <TextBox x:Name="TxtClientId"/>
+                    <TextBlock Text="EXCHANGE ORGANIZATION" Style="{StaticResource SectionLabel}"/>
+                    <TextBox x:Name="TxtOrg"/>
+                    <TextBlock Text="Needed for Exchange app sign-in: the tenant's .onmicrosoft.com domain. Uses the Tenant box if it is a domain."
+                               FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <StackPanel x:Name="PnlCert" Visibility="Collapsed">
+                    <TextBlock Text="CERTIFICATE THUMBPRINT  (installed on this PC)" Style="{StaticResource SectionLabel}"/>
+                    <TextBox x:Name="TxtThumb"/>
+                    <TextBlock Text="OR A .PFX FILE  (for example in the Certs folder on the USB)" Style="{StaticResource SectionLabel}"/>
+                    <DockPanel>
+                        <Button x:Name="BtnBrowsePfx" DockPanel.Dock="Right" Content="Browse..." Margin="6,0,0,0"/>
+                        <TextBox x:Name="TxtPfx"/>
+                    </DockPanel>
+                    <TextBlock Text="PFX PASSWORD" Style="{StaticResource SectionLabel}"/>
+                    <PasswordBox x:Name="PwdPfx"/>
+                </StackPanel>
+
+                <StackPanel x:Name="PnlSecret" Visibility="Collapsed">
+                    <TextBlock Text="CLIENT SECRET" Style="{StaticResource SectionLabel}"/>
+                    <PasswordBox x:Name="PwdSecret"/>
+                </StackPanel>
+
+                <StackPanel x:Name="PnlScopes">
+                    <TextBlock Text="GRAPH PERMISSIONS (SCOPES)" Style="{StaticResource SectionLabel}"/>
+                    <TextBox x:Name="TxtScopes" Height="70" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"/>
+                    <TextBlock Text="Pre-filled with every scope your scripts declare. The first sign-in to a tenant may ask an admin to consent."
+                               FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <TextBlock Text="SAVE THESE SETTINGS AS A PROFILE" Style="{StaticResource SectionLabel}"/>
+                <DockPanel>
+                    <Button x:Name="BtnSaveProfile" DockPanel.Dock="Right" Content="Save profile" Margin="6,0,0,0"/>
+                    <TextBox x:Name="TxtProfileName"/>
+                </DockPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

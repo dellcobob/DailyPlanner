@@ -1,0 +1,15 @@
+# Per-USB state, never commit
+Config/settings.json
+Config/tenants.json
+Config/.unblocked
+Config/startup-error.log
+
+# Big or private folders: keep only their README
+Modules/*
+!Modules/README.md
+Runtimes/*
+!Runtimes/README.md
+Reports/*
+!Reports/README.md
+Certs/*
+!Certs/README.md

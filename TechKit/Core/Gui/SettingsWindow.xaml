@@ -1,0 +1,60 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Tech Kit settings" Width="720" Height="800" MinHeight="460"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI" FontSize="13">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="18,12">
+            <DockPanel>
+                <Button x:Name="BtnResetColors" DockPanel.Dock="Left" Content="Reset colors to preset"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnCancel" Content="Cancel" IsCancel="True"/>
+                    <Button x:Name="BtnSave" Content="Save" Style="{StaticResource AccentButton}" IsDefault="True" Margin="0" Padding="22,6"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="22,6,22,18">
+                <TextBlock Text="COLOR PRESET" Style="{StaticResource SectionLabel}"/>
+                <ComboBox x:Name="CmbPreset"/>
+                <TextBlock Text="Pick a preset, then fine-tune any color below. Click a swatch to open the color picker, or type a hex value like #4F9DFF."
+                           FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+                <TextBlock Text="OUTPUT TEXT COLORS" Style="{StaticResource SectionLabel}"/>
+                <UniformGrid x:Name="GridOutputColors" Columns="2"/>
+
+                <TextBlock Text="WINDOW AND ACCENT COLORS" Style="{StaticResource SectionLabel}"/>
+                <UniformGrid x:Name="GridUiColors" Columns="2"/>
+
+                <TextBlock Text="OUTPUT AND TERMINAL FONT" Style="{StaticResource SectionLabel}"/>
+                <DockPanel>
+                    <TextBlock x:Name="TxtSize" DockPanel.Dock="Right" Width="42" TextAlignment="Right" VerticalAlignment="Center"/>
+                    <Slider x:Name="SldSize" DockPanel.Dock="Right" Width="180" Minimum="9" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <ComboBox x:Name="CmbFont"/>
+                </DockPanel>
+
+                <TextBlock Text="PREVIEW" Style="{StaticResource SectionLabel}"/>
+                <Border x:Name="BrdPreview" CornerRadius="4" Padding="12,8" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                    <StackPanel x:Name="PnlPreview"/>
+                </Border>
+
+                <TextBlock Text="POWERSHELL" Style="{StaticResource SectionLabel}"/>
+                <ComboBox x:Name="CmbShell"/>
+                <TextBlock Text="Which PowerShell runs the Tech Kit window. Auto uses PowerShell 7 when it is on the USB (Runtimes\pwsh) or installed, otherwise Windows PowerShell 5.1. Takes effect after a restart."
+                           FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,8" TextWrapping="Wrap"/>
+                <CheckBox x:Name="ChkWT" Content="Open pop-out consoles in Windows Terminal when it is installed"/>
+
+                <TextBlock Text="REPORTS FOLDER" Style="{StaticResource SectionLabel}"/>
+                <DockPanel>
+                    <Button x:Name="BtnBrowseReports" DockPanel.Dock="Right" Content="Browse..." Margin="6,0,0,0"/>
+                    <TextBox x:Name="TxtReports"/>
+                </DockPanel>
+                <TextBlock Text="Leave empty to save exports in the Reports folder on the USB."
+                           FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0"/>
+
+                <TextBlock Text="SAFETY" Style="{StaticResource SectionLabel}"/>
+                <CheckBox x:Name="ChkConfirm" Content="Ask for confirmation before running scripts that make changes (recommended)"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
