@@ -26,7 +26,15 @@
                 <TextBlock Text="SERVICES" Style="{StaticResource SectionLabel}"/>
                 <CheckBox x:Name="ChkGraph" Content="Microsoft Graph  (users, groups, licenses, Entra ID, sign-ins)" IsChecked="True" Margin="0,0,0,6"/>
                 <CheckBox x:Name="ChkExchange" Content="Exchange Online  (mailboxes, permissions, forwarding)" Margin="0,0,0,6"/>
-                <CheckBox x:Name="ChkCompliance" Content="Security &amp; Compliance  (Purview, message trace, eDiscovery)"/>
+                <CheckBox x:Name="ChkCompliance" Content="Security &amp; Compliance  (Purview, message trace, eDiscovery)" Margin="0,0,0,6"/>
+                <CheckBox x:Name="ChkTeams" Content="Microsoft Teams  (teams, phone numbers, policies)" Margin="0,0,0,6"/>
+                <CheckBox x:Name="ChkSharePoint" Content="SharePoint Online  (PnP.PowerShell: PowerShell 7 and an app ID)" Margin="0,0,0,6"/>
+                <StackPanel x:Name="PnlSpo" Visibility="Collapsed" Margin="24,0,0,6">
+                    <TextBox x:Name="TxtSpoUrl"/>
+                    <TextBlock Text="Admin or site URL, for example https://contoso-admin.sharepoint.com"
+                               FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,3,0,0"/>
+                </StackPanel>
+                <CheckBox x:Name="ChkAzure" Content="Azure  (subscriptions, resources)"/>
 
                 <TextBlock Text="SIGN-IN METHOD" Style="{StaticResource SectionLabel}"/>
                 <RadioButton x:Name="RbInteractive" GroupName="M" Content="Interactive  (a Microsoft sign-in window opens)" IsChecked="True" Margin="0,0,0,6"/>

@@ -17,7 +17,7 @@ function Get-TKRoot {
 }
 
 function Get-TKPath {
-    param([ValidateSet('Scripts', 'Modules', 'Config', 'Reports', 'Runtimes', 'Templates', 'Certs', 'Core', 'Gui', 'Tools')][string]$Name)
+    param([ValidateSet('Scripts', 'Modules', 'Config', 'Reports', 'Runtimes', 'Templates', 'Certs', 'Core', 'Gui', 'Libraries', 'Logs')][string]$Name)
     switch ($Name) {
         'Gui' { Join-Path $script:TKRoot 'Core\Gui' }
         default { Join-Path $script:TKRoot $Name }
@@ -25,6 +25,8 @@ function Get-TKPath {
 }
 
 function Initialize-TKEnvironment {
+    # Scripts can find the kit (Config, Reports...) through this variable.
+    $env:TECHKIT_ROOT = $script:TKRoot
     # Put the USB Modules folder first so modules carried on the drive win.
     $mods = Get-TKPath Modules
     if (-not (Test-Path -LiteralPath $mods)) { $null = New-Item -ItemType Directory -Path $mods -Force -ErrorAction SilentlyContinue }
@@ -169,6 +171,9 @@ function Get-TKDefaultSettings {
         DefaultScopes      = ''
         LastTenantProfile  = ''
         ConfirmChanges     = $true
+        AuditChanges       = $true
+        ActiveRole         = 'Administrator'
+        RolePinHash        = ''
     }
 }
 
@@ -239,18 +244,64 @@ function Get-TKAstValue {
 
 function Read-TKHeader {
     # Reads "# @Key: value" lines from the top of a script (works for .ps1, .py and .sh).
+    # Scripts without a Tech Kit header (for example from a downloaded library) fall back
+    # to "Name:" / "Description:" lines or .SYNOPSIS in their opening comment.
     param([Parameter(Mandatory)][string]$Path)
     $meta = [ordered]@{}
     $params = New-Object System.Collections.Generic.List[string]
-    $lines = Get-Content -LiteralPath $Path -TotalCount 150 -Encoding UTF8 -ErrorAction Stop
+    $choices = [ordered]@{}
+    $lines = @(Get-Content -LiteralPath $Path -TotalCount 150 -Encoding UTF8 -ErrorAction Stop)
     foreach ($line in $lines) {
         if ($line -match '^\s*#\s*@([A-Za-z][\w-]*)\s*:\s?(.*)$') {
             $key = $Matches[1]
             $val = $Matches[2].Trim()
-            if ($key -eq 'Param') { $params.Add($val) } else { $meta[$key] = $val }
+            if ($key -eq 'Param') { $params.Add($val) }
+            elseif ($key -eq 'Choices') {
+                if ($val -match '^\s*(\w+)\s*=\s*(.+)$') { $choices[$Matches[1]] = $Matches[2].Trim() }
+            } else { $meta[$key] = $val }
         }
     }
-    [pscustomobject]@{ Meta = $meta; Params = $params.ToArray() }
+    $hasHeader = $meta.Contains('Name')
+    if (-not $hasHeader) {
+        $limit = [Math]::Min($lines.Count, 60)
+        for ($i = 0; $i -lt $limit; $i++) {
+            $l = $lines[$i]
+            if (-not $meta.Contains('Name') -and $l -match '^\s*(?:#\s*)?(?:Name|Title|Script Name)\s*:\s*(.{3,120})$') { $meta['Name'] = $Matches[1].Trim() }
+            elseif (-not $meta.Contains('Description') -and $l -match '^\s*(?:#\s*)?Description\s*:\s*(.{3,})$') { $meta['Description'] = $Matches[1].Trim() }
+            elseif (-not $meta.Contains('Description') -and $l -match '^\s*\.SYNOPSIS\s*$' -and ($i + 1) -lt $lines.Count) {
+                $meta['Description'] = $lines[$i + 1].Trim()
+            }
+        }
+    }
+    [pscustomobject]@{ Meta = $meta; Params = $params.ToArray(); Choices = $choices; HasHeader = $hasHeader }
+}
+
+function Resolve-TKChoices {
+    # Turns an @Choices spec into dropdown values:
+    #   files:Identity\*.json            -> file names (without extension) under Config
+    #   jsonkeys:Identity\*.json:Departments -> property names of that object in each file
+    #   list:a, b, c                     -> a fixed list
+    param([string]$Spec)
+    $cfg = Get-TKPath Config
+    $out = New-Object System.Collections.Generic.List[string]
+    try {
+        if ($Spec -match '^files:(.+)$') {
+            Get-ChildItem -Path (Join-Path $cfg $Matches[1].Trim()) -File -ErrorAction SilentlyContinue |
+                Where-Object { -not $_.Name.StartsWith('_') } | ForEach-Object { $out.Add($_.BaseName) }
+        } elseif ($Spec -match '^jsonkeys:(.+):(\w+)$') {
+            $prop = $Matches[2]
+            foreach ($f in @(Get-ChildItem -Path (Join-Path $cfg $Matches[1].Trim()) -File -ErrorAction SilentlyContinue)) {
+                $json = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+                $obj = $json.$prop
+                if ($obj) { foreach ($pp in $obj.PSObject.Properties) { $out.Add($pp.Name) } }
+            }
+        } elseif ($Spec -match '^list:(.+)$') {
+            foreach ($v in ($Matches[1] -split ',')) { if ($v.Trim()) { $out.Add($v.Trim()) } }
+        }
+    } catch {
+        Write-Warning "Could not resolve choices '$Spec': $($_.Exception.Message)"
+    }
+    @($out | Select-Object -Unique)
 }
 
 function Get-TKPsParameters {
@@ -371,91 +422,134 @@ function Get-TKCategoryName {
     ($Folder -replace '^\d+\s*[-_.]?\s*', '').Trim()
 }
 
+function Get-TKLibraryRoots {
+    # The built-in Scripts folder plus every folder under Libraries (downloaded repos).
+    $list = New-Object System.Collections.Generic.List[object]
+    $list.Add([pscustomobject]@{ Root = (Get-TKPath Scripts); Prefix = 'Scripts'; Library = '' })
+    $libs = Get-TKPath Libraries
+    if (Test-Path -LiteralPath $libs) {
+        foreach ($d in @(Get-ChildItem -LiteralPath $libs -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+            $list.Add([pscustomobject]@{ Root = $d.FullName; Prefix = "Libraries\$($d.Name)"; Library = $d.Name })
+        }
+    }
+    $list.ToArray()
+}
+
 function Get-TKScript {
     [CmdletBinding()]
-    param([string]$ScriptsRoot = (Get-TKPath Scripts))
-    if (-not (Test-Path -LiteralPath $ScriptsRoot)) { return }
-    $rootFull = (Resolve-Path -LiteralPath $ScriptsRoot).Path.TrimEnd('\', '/')
-    $files = Get-ChildItem -LiteralPath $rootFull -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Extension -in @('.ps1', '.py', '.sh') -and -not $_.Name.StartsWith('_') }
+    param()
+    $changeVerbs = '\b(Set|Remove|New|Add|Disable|Enable|Update|Grant|Revoke|Reset|Move|Restart|Stop|Uninstall|Clear)-(Mg|Mailbox|AD[A-Z]|Distribution|Unified|Recipient|CAS|InboxRule|SPO|PnP|Team|Cs[A-Z]|Az[A-Z]|Entra|Local|Service|ItemProperty|Computer|Printer|Smb|NetFirewall|Transport|Organization|Msol|AzureAD|User|Group|DynamicDistribution|MailContact|MailUser|ManagementRole|RoleGroup)'
+    foreach ($lib in (Get-TKLibraryRoots)) {
+        if (-not (Test-Path -LiteralPath $lib.Root)) { continue }
+        $rootFull = (Resolve-Path -LiteralPath $lib.Root).Path.TrimEnd('\', '/')
+        $files = @(Get-ChildItem -LiteralPath $rootFull -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -in @('.ps1', '.py', '.sh') -and -not $_.Name.StartsWith('_') -and $_.FullName -notmatch '[\\/]\.git[\\/]' })
+        $perFolder = @{}
+        foreach ($f in $files) { $perFolder[$f.DirectoryName] = 1 + [int]$perFolder[$f.DirectoryName] }
 
-    foreach ($f in $files) {
-        try {
-            $rel = $f.FullName.Substring($rootFull.Length).TrimStart('\', '/')
-            $segments = @($rel -split '[\\/]')
-            $folder = 'Uncategorized'
-            if ($segments.Count -gt 1) { $folder = $segments[0] }
-            $header = Read-TKHeader -Path $f.FullName
-            $m = $header.Meta
-            $language = switch ($f.Extension.ToLowerInvariant()) { '.ps1' { 'PowerShell' } '.py' { 'Python' } '.sh' { 'Bash' } }
+        foreach ($f in $files) {
+            try {
+                $rel = $f.FullName.Substring($rootFull.Length).TrimStart('\', '/')
+                $segments = @($rel -split '[\\/]')
+                $isLib = [bool]$lib.Library
+                $folder = 'Uncategorized'
+                if ($isLib) { $folder = "Library: $($lib.Library)" }
+                elseif ($segments.Count -gt 1) { $folder = $segments[0] }
+                $header = Read-TKHeader -Path $f.FullName
+                $m = $header.Meta
+                $language = switch ($f.Extension.ToLowerInvariant()) { '.ps1' { 'PowerShell' } '.py' { 'Python' } '.sh' { 'Bash' } }
 
-            $params = @()
-            $whatIf = $false
-            $parseErrors = @()
-            if ($language -eq 'PowerShell') {
-                $pinfo = Get-TKPsParameters -Path $f.FullName
-                $params = @($pinfo.Params)
-                $whatIf = [bool]$pinfo.SupportsWhatIf
-                $parseErrors = @($pinfo.Errors)
-            } else {
-                $params = @($header.Params | ForEach-Object { ConvertFrom-TKParamLine $_ })
+                $params = @()
+                $whatIf = $false
+                $parseErrors = @()
+                if ($language -eq 'PowerShell') {
+                    $pinfo = Get-TKPsParameters -Path $f.FullName
+                    $params = @($pinfo.Params)
+                    $whatIf = [bool]$pinfo.SupportsWhatIf
+                    $parseErrors = @($pinfo.Errors)
+                } else {
+                    $params = @($header.Params | ForEach-Object { ConvertFrom-TKParamLine $_ })
+                }
+                if ($m.Contains('WhatIf')) { $whatIf = ConvertTo-TKBool $m['WhatIf'] }
+
+                $inferredM365 = $false
+                if (-not $header.HasHeader) {
+                    # Third-party script: guess the important flags from the code itself.
+                    $text = [IO.File]::ReadAllText($f.FullName)
+                    if (-not $m.Contains('Changes') -and $text -match $changeVerbs) { $m['Changes'] = 'Yes' }
+                    if ($text -match '#Requires\s+-RunAsAdministrator') { $m['Admin'] = 'Yes' }
+                    if ($text -match 'Connect-(MgGraph|ExchangeOnline|IPPSSession|MicrosoftTeams|PnPOnline|AzAccount|AzureAD|MsolService)') { $inferredM365 = $true }
+                    if (-not $m['Name']) {
+                        if ($perFolder[$f.DirectoryName] -eq 1 -and $f.DirectoryName -ne $rootFull) { $m['Name'] = Split-Path -Path $f.DirectoryName -Leaf }
+                        else { $m['Name'] = ([IO.Path]::GetFileNameWithoutExtension($f.Name) -creplace '([a-z])([A-Z])', '$1 $2') -replace '[-_]', ' ' }
+                    }
+                }
+
+                $targets = ConvertTo-TKList $m['Target']
+                if ($targets.Count -eq 0) { $targets = @('Local') }
+                $connect = ConvertTo-TKList $m['Connect']
+                if ($connect.Count -gt 0 -and $targets -notcontains 'M365') { $targets = @($targets) + 'M365' }
+
+                $category = $m['Category']
+                if (-not $category) {
+                    if ($isLib) { $category = $lib.Library } else { $category = Get-TKCategoryName $folder }
+                }
+                $name = $m['Name']
+                if (-not $name) { $name = [IO.Path]::GetFileNameWithoutExtension($f.Name) }
+
+                $admin = ConvertTo-TKBool $m['Admin']
+                $changes = ConvertTo-TKBool $m['Changes']
+                $remote = ($targets -contains 'Remote') -or ($targets -contains 'SSH')
+
+                $badges = New-Object System.Collections.Generic.List[string]
+                if ($admin) { $badges.Add('ADMIN') }
+                if ($changes) { $badges.Add('CHANGES') }
+                if ($remote) { $badges.Add('REMOTE') }
+                if ($connect.Count -gt 0 -or $inferredM365) { $badges.Add('M365') }
+                if ($language -eq 'Python') { $badges.Add('PY') }
+                if ($language -eq 'Bash') { $badges.Add('SH') }
+                if ($isLib) { $badges.Add('LIB') }
+                if ($parseErrors.Count -gt 0) { $badges.Add('ERROR') }
+
+                $id = $rel
+                if ($isLib) { $id = "$($lib.Prefix)\$rel" }
+                [pscustomobject]@{
+                    Id             = $id
+                    RelPath        = "$($lib.Prefix)\$rel"
+                    Path           = $f.FullName
+                    FileName       = $f.Name
+                    Language       = $language
+                    Name           = $name
+                    Description    = [string]$m['Description']
+                    Category       = $category
+                    CategoryFolder = $folder
+                    Library        = $lib.Library
+                    IsLibrary      = $isLib
+                    HasHeader      = $header.HasHeader
+                    Admin          = $admin
+                    Changes        = $changes
+                    WhatIf         = $whatIf
+                    Targets        = $targets
+                    SupportsRemote = $remote
+                    Connect        = $connect
+                    Scopes         = ConvertTo-TKList $m['Scopes']
+                    Modules        = ConvertTo-TKList $m['Modules']
+                    Shell          = ConvertTo-TKList $m['Shell']
+                    OS             = [string]$m['OS']
+                    Tags           = ConvertTo-TKList $m['Tags']
+                    Author         = [string]$m['Author']
+                    Version        = [string]$m['Version']
+                    Params         = $params
+                    Choices        = $header.Choices
+                    ParseErrors    = $parseErrors
+                    Badges         = $badges.ToArray()
+                    Meta           = $m
+                    ParamLines     = $header.Params
+                    SearchText     = (($name, $m['Description'], $category, $m['Tags'], $f.Name) -join ' ').ToLowerInvariant()
+                }
+            } catch {
+                Write-Warning "Skipped $($f.FullName): $($_.Exception.Message)"
             }
-            if ($m.Contains('WhatIf')) { $whatIf = ConvertTo-TKBool $m['WhatIf'] }
-
-            $targets = ConvertTo-TKList $m['Target']
-            if ($targets.Count -eq 0) { $targets = @('Local') }
-            $connect = ConvertTo-TKList $m['Connect']
-            if ($connect.Count -gt 0 -and $targets -notcontains 'M365') { $targets = @($targets) + 'M365' }
-
-            $category = $m['Category']
-            if (-not $category) { $category = Get-TKCategoryName $folder }
-            $name = $m['Name']
-            if (-not $name) { $name = [IO.Path]::GetFileNameWithoutExtension($f.Name) }
-
-            $admin = ConvertTo-TKBool $m['Admin']
-            $changes = ConvertTo-TKBool $m['Changes']
-            $remote = ($targets -contains 'Remote') -or ($targets -contains 'SSH')
-
-            $badges = New-Object System.Collections.Generic.List[string]
-            if ($admin) { $badges.Add('ADMIN') }
-            if ($changes) { $badges.Add('CHANGES') }
-            if ($remote) { $badges.Add('REMOTE') }
-            if ($connect.Count -gt 0) { $badges.Add('M365') }
-            if ($language -eq 'Python') { $badges.Add('PY') }
-            if ($language -eq 'Bash') { $badges.Add('SH') }
-            if ($parseErrors.Count -gt 0) { $badges.Add('ERROR') }
-
-            [pscustomobject]@{
-                Id             = $rel
-                Path           = $f.FullName
-                FileName       = $f.Name
-                Language       = $language
-                Name           = $name
-                Description    = [string]$m['Description']
-                Category       = $category
-                CategoryFolder = $folder
-                Admin          = $admin
-                Changes        = $changes
-                WhatIf         = $whatIf
-                Targets        = $targets
-                SupportsRemote = $remote
-                Connect        = $connect
-                Scopes         = ConvertTo-TKList $m['Scopes']
-                Modules        = ConvertTo-TKList $m['Modules']
-                Shell          = ConvertTo-TKList $m['Shell']
-                OS             = [string]$m['OS']
-                Tags           = ConvertTo-TKList $m['Tags']
-                Author         = [string]$m['Author']
-                Version        = [string]$m['Version']
-                Params         = $params
-                ParseErrors    = $parseErrors
-                Badges         = $badges.ToArray()
-                Meta           = $m
-                ParamLines     = $header.Params
-                SearchText     = (($name, $m['Description'], $category, $m['Tags'], $f.Name) -join ' ').ToLowerInvariant()
-            }
-        } catch {
-            Write-Warning "Skipped $($f.FullName): $($_.Exception.Message)"
         }
     }
 }
@@ -477,7 +571,8 @@ function Split-TKScriptFile {
 function Format-TKHeader {
     param(
         [System.Collections.IDictionary]$Meta,
-        [string[]]$ParamLines = @()
+        [string[]]$ParamLines = @(),
+        [System.Collections.IDictionary]$Choices = @{}
     )
     $lines = New-Object System.Collections.Generic.List[string]
     $keys = @($script:MetaOrder) + @($Meta.Keys | Where-Object { $script:MetaOrder -notcontains $_ })
@@ -488,6 +583,7 @@ function Format-TKHeader {
         $lines.Add(('# @{0,-13}{1}' -f ($k + ':'), $v.Trim()))
     }
     foreach ($p in $ParamLines) { if ($p.Trim()) { $lines.Add(('# @{0,-13}{1}' -f 'Param:', $p.Trim())) } }
+    foreach ($k in $Choices.Keys) { $lines.Add(('# @{0,-13}{1} = {2}' -f 'Choices:', $k, $Choices[$k])) }
     $lines.ToArray()
 }
 
@@ -497,14 +593,15 @@ function Set-TKScriptContent {
         [Parameter(Mandatory)][System.Collections.IDictionary]$Meta,
         [string[]]$ParamLines = @(),
         [string]$Body = '',
-        [string]$Shebang = ''
+        [string]$Shebang = '',
+        [System.Collections.IDictionary]$Choices = @{}
     )
     $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
     $out = New-Object System.Collections.Generic.List[string]
     if ($Shebang) { $out.Add($Shebang) }
     elseif ($ext -eq '.sh') { $out.Add('#!/usr/bin/env bash') }
     elseif ($ext -eq '.py') { $out.Add('#!/usr/bin/env python3') }
-    foreach ($l in (Format-TKHeader -Meta $Meta -ParamLines $ParamLines)) { $out.Add($l) }
+    foreach ($l in (Format-TKHeader -Meta $Meta -ParamLines $ParamLines -Choices $Choices)) { $out.Add($l) }
     $out.Add('')
     $out.Add($Body.TrimEnd())
     $text = ($out -join "`n")
@@ -552,7 +649,9 @@ function New-TKRunspace {
         $global:TKResults = New-Object System.Collections.Generic.List[object]
         $global:ProgressPreference = 'Continue'
         $global:ErrorActionPreference = 'Continue'
+        $global:TKConnections = @{}
         Initialize-TKEnvironment
+        Install-TKConnectShims
         Set-Location -LiteralPath $HOME
     })
     $null = $init.Invoke()
@@ -976,7 +1075,7 @@ function Select-TKSupportedParams {
 function Connect-TKM365 {
     [CmdletBinding()]
     param(
-        [ValidateSet('Graph', 'Exchange', 'Compliance')][string[]]$Service = @('Graph'),
+        [ValidateSet('Graph', 'Exchange', 'Compliance', 'Teams', 'SharePoint', 'Azure')][string[]]$Service = @('Graph'),
         [ValidateSet('Interactive', 'DeviceCode', 'Certificate', 'Secret')][string]$Method = 'Interactive',
         [string]$TenantId,
         [string]$ClientId,
@@ -986,7 +1085,8 @@ function Connect-TKM365 {
         [securestring]$ClientSecret,
         [string]$Organization,
         [string[]]$Scopes = @(),
-        [string]$UserPrincipalName
+        [string]$UserPrincipalName,
+        [string]$SharePointUrl
     )
     if (-not $Organization -and $TenantId -and $TenantId -match '\.') { $Organization = $TenantId }
     if ($Method -in @('Certificate', 'Secret') -and (-not $ClientId -or -not $TenantId)) {
@@ -995,51 +1095,56 @@ function Connect-TKM365 {
     if ($Method -eq 'Certificate' -and -not $CertificateThumbprint -and -not $CertificatePath) {
         throw 'Certificate sign-in needs a certificate thumbprint or a .pfx file.'
     }
+    if (-not $global:TKConnections) { $global:TKConnections = @{} }
+    $cert = $null
+    if ($Method -eq 'Certificate' -and -not $CertificateThumbprint) {
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath, $CertificatePassword)
+    }
+    $failures = New-Object System.Collections.Generic.List[string]
 
+    # The real cmdlets are called by module-qualified name, because the Tech Kit session
+    # also has "reuse the connection" wrappers with the plain names (see Install-TKConnectShims).
     if ($Service -contains 'Graph') {
-        Write-Host 'Connecting to Microsoft Graph...' -ForegroundColor Cyan
-        Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
-        $g = @{ NoWelcome = $true; ContextScope = 'Process' }
-        switch ($Method) {
-            'Interactive' {
-                if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) {
-                    try { Set-MgGraphOption -DisableLoginByWAM $true -ErrorAction Stop } catch { }
+        try {
+            Write-Host 'Connecting to Microsoft Graph...' -ForegroundColor Cyan
+            Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+            $g = @{ NoWelcome = $true; ContextScope = 'Process' }
+            switch ($Method) {
+                'Interactive' {
+                    if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) {
+                        try { Set-MgGraphOption -DisableLoginByWAM $true -ErrorAction Stop } catch { }
+                    }
+                    if ($Scopes.Count) { $g.Scopes = $Scopes }
+                    if ($TenantId) { $g.TenantId = $TenantId }
                 }
-                if ($Scopes.Count) { $g.Scopes = $Scopes }
-                if ($TenantId) { $g.TenantId = $TenantId }
-            }
-            'DeviceCode' {
-                $g.UseDeviceCode = $true
-                if ($Scopes.Count) { $g.Scopes = $Scopes }
-                if ($TenantId) { $g.TenantId = $TenantId }
-                Write-Host 'A sign-in code will appear below. Open https://microsoft.com/devicelogin on any device and enter it.' -ForegroundColor Yellow
-            }
-            'Certificate' {
-                $g.ClientId = $ClientId
-                $g.TenantId = $TenantId
-                if ($CertificateThumbprint) {
-                    $g.CertificateThumbprint = $CertificateThumbprint
-                } else {
-                    $g.Certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath, $CertificatePassword)
+                'DeviceCode' {
+                    $g.UseDeviceCode = $true
+                    if ($Scopes.Count) { $g.Scopes = $Scopes }
+                    if ($TenantId) { $g.TenantId = $TenantId }
+                    Write-Host 'A sign-in code will appear below. Open https://microsoft.com/devicelogin on any device and enter it.' -ForegroundColor Yellow
+                }
+                'Certificate' {
+                    $g.ClientId = $ClientId
+                    $g.TenantId = $TenantId
+                    if ($CertificateThumbprint) { $g.CertificateThumbprint = $CertificateThumbprint } else { $g.Certificate = $cert }
+                }
+                'Secret' {
+                    $g.TenantId = $TenantId
+                    $g.ClientSecretCredential = New-Object System.Management.Automation.PSCredential($ClientId, $ClientSecret)
                 }
             }
-            'Secret' {
-                $g.TenantId = $TenantId
-                $g.ClientSecretCredential = New-Object System.Management.Automation.PSCredential($ClientId, $ClientSecret)
+            $g = Select-TKSupportedParams -Command 'Microsoft.Graph.Authentication\Connect-MgGraph' -Params $g
+            Microsoft.Graph.Authentication\Connect-MgGraph @g -ErrorAction Stop
+            $ctx = Microsoft.Graph.Authentication\Get-MgContext
+            if ($ctx) {
+                $who = $ctx.Account
+                if (-not $who) { $who = 'app ' + $ctx.AppName }
+                Write-Host "  Graph connected as $who (tenant $($ctx.TenantId))" -ForegroundColor Green
             }
-        }
-        $g = Select-TKSupportedParams -Command Connect-MgGraph -Params $g
-        Connect-MgGraph @g -ErrorAction Stop
-        $ctx = Get-MgContext
-        if ($ctx) {
-            $who = $ctx.Account
-            if (-not $who) { $who = 'app ' + $ctx.AppName }
-            Write-Host "  Graph connected as $who (tenant $($ctx.TenantId))" -ForegroundColor Green
-        }
+        } catch { $failures.Add("Microsoft Graph: $($_.Exception.Message)") }
     }
 
     if ($Service -contains 'Exchange' -or $Service -contains 'Compliance') {
-        Import-Module ExchangeOnlineManagement -ErrorAction Stop
         $e = @{ ShowBanner = $false }
         $skip = $false
         switch ($Method) {
@@ -1049,40 +1154,125 @@ function Connect-TKM365 {
             }
             'DeviceCode' { $e.Device = $true }
             'Certificate' {
-                if (-not $Organization) { throw 'Exchange app sign-in needs the tenant''s .onmicrosoft.com domain in the Tenant or Organization box.' }
+                if (-not $Organization) { $failures.Add('Exchange: app sign-in needs the tenant''s .onmicrosoft.com domain in the Tenant or Organization box.'); $skip = $true }
                 $e.AppId = $ClientId
                 $e.Organization = $Organization
                 if ($CertificateThumbprint) { $e.CertificateThumbprint = $CertificateThumbprint }
                 else { $e.CertificateFilePath = $CertificatePath; $e.CertificatePassword = $CertificatePassword }
             }
             'Secret' {
-                Write-Warning 'Exchange Online does not accept client secrets. Use a certificate for app sign-in. Skipping Exchange.'
+                Write-Warning 'Exchange Online and Security & Compliance do not accept client secrets. Use a certificate for app sign-in.'
                 $skip = $true
             }
         }
+        if (-not $skip) {
+            try { Import-Module ExchangeOnlineManagement -ErrorAction Stop } catch { $failures.Add("Exchange: $($_.Exception.Message)"); $skip = $true }
+        }
         if (-not $skip -and $Service -contains 'Exchange') {
-            Write-Host 'Connecting to Exchange Online...' -ForegroundColor Cyan
-            $p = Select-TKSupportedParams -Command Connect-ExchangeOnline -Params $e
-            Connect-ExchangeOnline @p -ErrorAction Stop
-            Write-Host '  Exchange Online connected.' -ForegroundColor Green
+            try {
+                Write-Host 'Connecting to Exchange Online...' -ForegroundColor Cyan
+                $p = Select-TKSupportedParams -Command 'ExchangeOnlineManagement\Connect-ExchangeOnline' -Params $e
+                ExchangeOnlineManagement\Connect-ExchangeOnline @p -ErrorAction Stop
+                Write-Host '  Exchange Online connected.' -ForegroundColor Green
+            } catch { $failures.Add("Exchange Online: $($_.Exception.Message)") }
         }
         if (-not $skip -and $Service -contains 'Compliance') {
-            Write-Host 'Connecting to Security & Compliance...' -ForegroundColor Cyan
-            $p = Select-TKSupportedParams -Command Connect-IPPSSession -Params $e
-            Connect-IPPSSession @p -ErrorAction Stop
-            Write-Host '  Security & Compliance connected.' -ForegroundColor Green
+            try {
+                Write-Host 'Connecting to Security & Compliance...' -ForegroundColor Cyan
+                $p = Select-TKSupportedParams -Command 'ExchangeOnlineManagement\Connect-IPPSSession' -Params $e
+                ExchangeOnlineManagement\Connect-IPPSSession @p -ErrorAction Stop
+                Write-Host '  Security & Compliance connected.' -ForegroundColor Green
+            } catch { $failures.Add("Security & Compliance: $($_.Exception.Message)") }
         }
+    }
+
+    if ($Service -contains 'Teams') {
+        try {
+            Write-Host 'Connecting to Microsoft Teams...' -ForegroundColor Cyan
+            Import-Module MicrosoftTeams -ErrorAction Stop
+            $t = @{}
+            switch ($Method) {
+                'Interactive' { if ($TenantId) { $t.TenantId = $TenantId } }
+                'DeviceCode' { $t.UseDeviceAuthentication = $true; if ($TenantId) { $t.TenantId = $TenantId } }
+                'Certificate' {
+                    $t.ApplicationId = $ClientId
+                    $t.TenantId = $TenantId
+                    if ($CertificateThumbprint) { $t.CertificateThumbprint = $CertificateThumbprint } else { $t.Certificate = $cert }
+                }
+                'Secret' { throw 'Teams app sign-in needs a certificate.' }
+            }
+            $t = Select-TKSupportedParams -Command 'MicrosoftTeams\Connect-MicrosoftTeams' -Params $t
+            $null = MicrosoftTeams\Connect-MicrosoftTeams @t -ErrorAction Stop
+            $global:TKConnections['Teams'] = $true
+            Write-Host '  Microsoft Teams connected.' -ForegroundColor Green
+        } catch { $failures.Add("Teams: $($_.Exception.Message)") }
+    }
+
+    if ($Service -contains 'SharePoint') {
+        try {
+            Write-Host 'Connecting to SharePoint Online (PnP)...' -ForegroundColor Cyan
+            if (-not $SharePointUrl) { throw 'Enter the SharePoint URL (for example https://contoso-admin.sharepoint.com).' }
+            if ($PSVersionTable.PSEdition -ne 'Core') { throw 'PnP.PowerShell needs PowerShell 7. Switch Settings > PowerShell to PowerShell 7.' }
+            if (-not $ClientId) { throw 'PnP.PowerShell needs your own Entra app (client) ID. Create one with "Create App Registration for Tech Kit".' }
+            Import-Module PnP.PowerShell -ErrorAction Stop
+            $s = @{ Url = $SharePointUrl; ClientId = $ClientId }
+            switch ($Method) {
+                'Interactive' { $s.Interactive = $true; if ($TenantId) { $s.Tenant = $TenantId } }
+                'DeviceCode' { $s.DeviceLogin = $true; if ($TenantId) { $s.Tenant = $TenantId } }
+                'Certificate' {
+                    $s.Tenant = $TenantId
+                    if ($CertificateThumbprint) { $s.Thumbprint = $CertificateThumbprint }
+                    else { $s.CertificatePath = $CertificatePath; $s.CertificatePassword = $CertificatePassword }
+                }
+                'Secret' { $s.ClientSecret = (New-Object System.Net.NetworkCredential('', $ClientSecret)).Password }
+            }
+            $s = Select-TKSupportedParams -Command 'PnP.PowerShell\Connect-PnPOnline' -Params $s
+            PnP.PowerShell\Connect-PnPOnline @s -ErrorAction Stop
+            $global:TKConnections['SharePoint'] = $SharePointUrl
+            Write-Host "  SharePoint connected to $SharePointUrl" -ForegroundColor Green
+        } catch { $failures.Add("SharePoint: $($_.Exception.Message)") }
+    }
+
+    if ($Service -contains 'Azure') {
+        try {
+            Write-Host 'Connecting to Azure...' -ForegroundColor Cyan
+            Import-Module Az.Accounts -ErrorAction Stop
+            if ($Method -eq 'Interactive' -and (Get-Command Update-AzConfig -ErrorAction SilentlyContinue)) {
+                try { $null = Update-AzConfig -EnableLoginByWam $false -Scope Process -ErrorAction Stop } catch { }
+            }
+            $a = @{}
+            switch ($Method) {
+                'Interactive' { if ($TenantId) { $a.Tenant = $TenantId } }
+                'DeviceCode' { $a.UseDeviceAuthentication = $true; if ($TenantId) { $a.Tenant = $TenantId } }
+                'Certificate' {
+                    if (-not $CertificateThumbprint) { throw 'Azure app sign-in needs the certificate installed on this PC (thumbprint).' }
+                    $a.ServicePrincipal = $true; $a.ApplicationId = $ClientId; $a.Tenant = $TenantId; $a.CertificateThumbprint = $CertificateThumbprint
+                }
+                'Secret' {
+                    $a.ServicePrincipal = $true; $a.Tenant = $TenantId
+                    $a.Credential = New-Object System.Management.Automation.PSCredential($ClientId, $ClientSecret)
+                }
+            }
+            $a = Select-TKSupportedParams -Command 'Az.Accounts\Connect-AzAccount' -Params $a
+            $ctx = Az.Accounts\Connect-AzAccount @a -ErrorAction Stop
+            Write-Host "  Azure connected: $($ctx.Context.Account.Id), subscription $($ctx.Context.Subscription.Name)" -ForegroundColor Green
+        } catch { $failures.Add("Azure: $($_.Exception.Message)") }
+    }
+
+    if ($failures.Count) {
+        foreach ($f in $failures) { Write-Host "  FAILED  $f" -ForegroundColor Red }
+        throw "$($failures.Count) connection(s) failed."
     }
 }
 
 function Get-TKM365Status {
     $s = [ordered]@{
         Graph = $false; GraphAccount = ''; GraphTenant = ''; GraphScopes = @(); GraphAuthType = ''
-        Exchange = $false; ExchangeAccount = ''; Compliance = $false; Tenant = ''
+        Exchange = $false; ExchangeAccount = ''; Compliance = $false; Teams = $false; SharePoint = ''; Azure = ''; Tenant = ''
     }
     if (Get-Module -Name Microsoft.Graph.Authentication) {
         try {
-            $ctx = Get-MgContext
+            $ctx = Microsoft.Graph.Authentication\Get-MgContext
             if ($ctx) {
                 $s.Graph = $true
                 $s.GraphAccount = [string]$ctx.Account
@@ -1096,7 +1286,7 @@ function Get-TKM365Status {
     }
     if (Get-Module -Name ExchangeOnlineManagement) {
         try {
-            $ci = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object { $_.State -eq 'Connected' })
+            $ci = @(ExchangeOnlineManagement\Get-ConnectionInformation -ErrorAction Stop | Where-Object { $_.State -eq 'Connected' })
             foreach ($c in $ci) {
                 if ($c.IsEopSession) { $s.Compliance = $true }
                 else {
@@ -1107,15 +1297,69 @@ function Get-TKM365Status {
             }
         } catch { }
     }
+    if ($global:TKConnections) {
+        if ($global:TKConnections['Teams'] -and (Get-Module -Name MicrosoftTeams)) { $s.Teams = $true }
+        if ($global:TKConnections['SharePoint'] -and (Get-Module -Name PnP.PowerShell)) { $s.SharePoint = [string]$global:TKConnections['SharePoint'] }
+    }
+    if (Get-Module -Name Az.Accounts) {
+        try { $az = Az.Accounts\Get-AzContext -ErrorAction Stop; if ($az -and $az.Account) { $s.Azure = [string]$az.Account.Id } } catch { }
+    }
     [pscustomobject]$s
 }
 
 function Disconnect-TKM365 {
     if (Get-Module -Name Microsoft.Graph.Authentication) {
-        try { Disconnect-MgGraph -ErrorAction Stop | Out-Null; Write-Host 'Disconnected from Microsoft Graph.' -ForegroundColor Yellow } catch { }
+        try { Microsoft.Graph.Authentication\Disconnect-MgGraph -ErrorAction Stop | Out-Null; Write-Host 'Disconnected from Microsoft Graph.' -ForegroundColor Yellow } catch { }
     }
     if (Get-Module -Name ExchangeOnlineManagement) {
-        try { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop; Write-Host 'Disconnected from Exchange Online / Compliance.' -ForegroundColor Yellow } catch { }
+        try { ExchangeOnlineManagement\Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop; Write-Host 'Disconnected from Exchange Online / Compliance.' -ForegroundColor Yellow } catch { }
+    }
+    if (Get-Module -Name MicrosoftTeams) {
+        try { MicrosoftTeams\Disconnect-MicrosoftTeams -ErrorAction Stop; Write-Host 'Disconnected from Teams.' -ForegroundColor Yellow } catch { }
+    }
+    if (Get-Module -Name PnP.PowerShell) {
+        try { PnP.PowerShell\Disconnect-PnPOnline -ErrorAction Stop; Write-Host 'Disconnected from SharePoint.' -ForegroundColor Yellow } catch { }
+    }
+    if (Get-Module -Name Az.Accounts) {
+        try { $null = Az.Accounts\Disconnect-AzAccount -ErrorAction Stop; Write-Host 'Disconnected from Azure.' -ForegroundColor Yellow } catch { }
+    }
+    $global:TKConnections = @{}
+}
+
+function Install-TKConnectShims {
+    # Third-party scripts usually call Connect-MgGraph / Connect-ExchangeOnline themselves.
+    # Inside Tech Kit these wrappers reuse the connection you already made, so you are not
+    # asked to sign in again, and they apply the Tech Kit sign-in settings when they do connect.
+    function global:Connect-MgGraph {
+        if (Get-Module -Name Microsoft.Graph.Authentication) {
+            $ctx = $null
+            try { $ctx = Microsoft.Graph.Authentication\Get-MgContext } catch { }
+            if ($ctx) {
+                $who = $ctx.Account
+                if (-not $who) { $who = $ctx.AppName }
+                Write-Host "Tech Kit: reusing the Microsoft Graph connection ($who). Reconnect from the Microsoft 365 button if this script needs other permissions." -ForegroundColor DarkGray
+                return
+            }
+        }
+        $extra = @{}
+        $cmd = Get-Command -Name 'Microsoft.Graph.Authentication\Connect-MgGraph' -ErrorAction Stop
+        if ($cmd.Parameters.ContainsKey('ContextScope') -and $args -notcontains '-ContextScope') { $extra.ContextScope = 'Process' }
+        if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) { try { Set-MgGraphOption -DisableLoginByWAM $true -ErrorAction Stop } catch { } }
+        Microsoft.Graph.Authentication\Connect-MgGraph @args @extra
+    }
+    function global:Connect-ExchangeOnline {
+        if (Get-Module -Name ExchangeOnlineManagement) {
+            $live = @()
+            try { $live = @(ExchangeOnlineManagement\Get-ConnectionInformation | Where-Object { $_.State -eq 'Connected' -and -not $_.IsEopSession }) } catch { }
+            if ($live.Count) {
+                Write-Host "Tech Kit: reusing the Exchange Online connection ($($live[0].UserPrincipalName))." -ForegroundColor DarkGray
+                return
+            }
+        }
+        $extra = @{}
+        $cmd = Get-Command -Name 'ExchangeOnlineManagement\Connect-ExchangeOnline' -ErrorAction Stop
+        if ($cmd.Parameters.ContainsKey('DisableWAM') -and $args -notcontains '-DisableWAM') { $extra.DisableWAM = $true }
+        ExchangeOnlineManagement\Connect-ExchangeOnline @args @extra
     }
 }
 
@@ -1124,6 +1368,110 @@ function Get-TKAllScopes {
     $all = @(Get-TKScript | ForEach-Object { $_.Scopes } | Where-Object { $_ } | Sort-Object -Unique)
     if ($all.Count -eq 0) { $all = @('User.Read.All') }
     $all
+}
+
+# ----------------------------------------------------------------------------
+#  Delegation, approvals and audit (Adaxes-style)
+# ----------------------------------------------------------------------------
+
+function Get-TKRoles {
+    # Roles live in Config\roles.json. They filter what a technician sees and can run in
+    # the Tech Kit window. They do not grant or remove rights: scripts always run with the
+    # signed-in account's own permissions.
+    $file = Join-Path (Get-TKPath Config) 'roles.json'
+    $roles = [ordered]@{}
+    $approval = [ordered]@{ ApproverGroup = '' }
+    if (Test-Path -LiteralPath $file) {
+        try {
+            $json = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
+            foreach ($p in $json.Roles.PSObject.Properties) { $roles[$p.Name] = ConvertTo-TKHashtable $p.Value }
+            if ($json.Approval) { $approval = ConvertTo-TKHashtable $json.Approval }
+        } catch {
+            Write-Warning "roles.json could not be read: $($_.Exception.Message)"
+        }
+    }
+    if (-not $roles.Contains('Administrator')) {
+        $roles['Administrator'] = [ordered]@{
+            Description = 'Everything'; Allow = @('*'); Deny = @(); AllowChanges = $true; AllowTerminal = $true
+            AllowEditing = $true; RequireTicket = $false; RequireApproval = $false
+        }
+    }
+    [pscustomobject]@{ Roles = $roles; Approval = $approval }
+}
+
+function Get-TKRoleValue {
+    param($Role, [string]$Key, $Default)
+    if ($Role -and $Role.Contains($Key) -and $null -ne $Role[$Key]) { return $Role[$Key] }
+    $Default
+}
+
+function Test-TKRoleAllows {
+    param($Role, $Script)
+    if (-not $Role) { return $true }
+    $keys = @($Script.Name, "$($Script.Category)\$($Script.Name)", $Script.Id)
+    $ok = $false
+    foreach ($pat in @(Get-TKRoleValue $Role 'Allow' @('*'))) { foreach ($k in $keys) { if ($k -like $pat) { $ok = $true } } }
+    foreach ($pat in @(Get-TKRoleValue $Role 'Deny' @())) { foreach ($k in $keys) { if ($k -like $pat) { $ok = $false } } }
+    if ($ok -and $Script.Changes -and -not (Get-TKRoleValue $Role 'AllowChanges' $true)) { $ok = $false }
+    $ok
+}
+
+function Test-TKApprover {
+    # Checks a second person's credentials and (optionally) membership of an approver group.
+    # Works against the domain, or the local PC for .\user or PCNAME\user accounts.
+    param([Parameter(Mandatory)][System.Management.Automation.PSCredential]$Credential, [string]$Group)
+    Add-Type -AssemblyName System.DirectoryServices.AccountManagement
+    $am = 'System.DirectoryServices.AccountManagement'
+    $user = $Credential.UserName
+    $pass = $Credential.GetNetworkCredential().Password
+    $domain = $null
+    $machine = $false
+    if ($user -match '^(.+?)\\(.+)$') {
+        $domain = $Matches[1]; $user = $Matches[2]
+        if ($domain -eq '.' -or $domain -eq $env:COMPUTERNAME) { $machine = $true; $domain = $null }
+    }
+    try {
+        if ($machine) { $ctx = New-Object "$am.PrincipalContext"([System.DirectoryServices.AccountManagement.ContextType]::Machine) }
+        elseif ($domain) { $ctx = New-Object "$am.PrincipalContext"([System.DirectoryServices.AccountManagement.ContextType]::Domain, $domain) }
+        else { $ctx = New-Object "$am.PrincipalContext"([System.DirectoryServices.AccountManagement.ContextType]::Domain) }
+    } catch {
+        return [pscustomobject]@{ Ok = $false; Approver = ''; Reason = "Cannot reach the domain to check the approver: $($_.Exception.Message)" }
+    }
+    if (-not $ctx.ValidateCredentials($user, $pass)) {
+        return [pscustomobject]@{ Ok = $false; Approver = ''; Reason = 'Wrong user name or password.' }
+    }
+    $up = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($ctx, $user)
+    if (-not $up) { return [pscustomobject]@{ Ok = $false; Approver = ''; Reason = 'The approver account was not found.' } }
+    if ($up.SamAccountName -eq $env:USERNAME) {
+        return [pscustomobject]@{ Ok = $false; Approver = ''; Reason = 'The approver has to be a different person from the one running the script.' }
+    }
+    if ($Group) {
+        $member = $false
+        try {
+            foreach ($g in $up.GetAuthorizationGroups()) { if ($g.SamAccountName -eq $Group -or $g.Name -eq $Group) { $member = $true; break } }
+        } catch {
+            foreach ($g in $up.GetGroups()) { if ($g.SamAccountName -eq $Group -or $g.Name -eq $Group) { $member = $true; break } }
+        }
+        if (-not $member) { return [pscustomobject]@{ Ok = $false; Approver = ''; Reason = "$($up.SamAccountName) is not in the approver group '$Group'." } }
+    }
+    [pscustomobject]@{ Ok = $true; Approver = "$($ctx.Name)\$($up.SamAccountName)"; Reason = '' }
+}
+
+function Write-TKAudit {
+    # Appends one row to Logs\audit.csv on the USB.
+    param([Parameter(Mandatory)][System.Collections.IDictionary]$Entry)
+    $dir = Get-TKPath Logs
+    if (-not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+    $file = Join-Path $dir 'audit.csv'
+    [pscustomobject]$Entry | Export-Csv -LiteralPath $file -Append -NoTypeInformation -Encoding UTF8
+}
+
+function Get-TKIdentityRules {
+    # Loads Config\Identity\<Profile>.json (naming conventions, departments, groups, licenses).
+    param([Parameter(Mandatory)][string]$Name)
+    $file = Join-Path (Get-TKPath Config) "Identity\$Name.json"
+    if (-not (Test-Path -LiteralPath $file)) { throw "Rules file not found: $file. Copy Config\Identity\Example.json and edit it." }
+    ConvertTo-TKHashtable (Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
 
 # ----------------------------------------------------------------------------

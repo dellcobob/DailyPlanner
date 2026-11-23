@@ -1,0 +1,65 @@
+{
+  "_comment": "Business rules for one client, used by the onboarding and offboarding scripts. Copy this file to <ClientName>.json and edit it; the file name becomes the 'RulesProfile' choice. Name placeholders: {first} {last} (lowercase, accents and symbols removed), {First} {Last} (as typed), {f} {l} (first letter), {domain}, {n} (a number, used to resolve name conflicts). SharePointSites are the names of the Microsoft 365 groups behind those sites: adding a user to the group gives site access.",
+  "Client": "Example Corp",
+  "Domain": "example.com",
+  "Company": "Example Corp",
+  "UsageLocation": "US",
+  "PasswordLength": 16,
+  "Naming": {
+    "SamAccountName": "{first}.{last}",
+    "DisplayName": "{First} {Last}",
+    "UserPrincipalName": "{first}.{last}@{domain}",
+    "Mail": "{first}.{last}@{domain}",
+    "Conflict": "{first}.{last}{n}",
+    "MaxSamLength": 20
+  },
+  "AD": {
+    "DefaultOU": "OU=Users,OU=Example,DC=example,DC=com",
+    "Groups": ["All Staff"],
+    "MustChangePassword": true
+  },
+  "Cloud": {
+    "Licenses": ["SPB"],
+    "Groups": ["All Company"],
+    "DistributionLists": []
+  },
+  "Departments": {
+    "Sales": {
+      "Title": "Sales Representative",
+      "OU": "OU=Sales,OU=Users,OU=Example,DC=example,DC=com",
+      "ADGroups": ["Sales", "CRM Users"],
+      "CloudGroups": ["Sales Team"],
+      "SharePointSites": ["Sales Team"],
+      "DistributionLists": ["sales@example.com"],
+      "Licenses": []
+    },
+    "Finance": {
+      "Title": "Accountant",
+      "OU": "OU=Finance,OU=Users,OU=Example,DC=example,DC=com",
+      "ADGroups": ["Finance", "Finance Share RW"],
+      "CloudGroups": ["Finance Team"],
+      "SharePointSites": ["Finance"],
+      "DistributionLists": ["finance@example.com"],
+      "Licenses": []
+    },
+    "IT": {
+      "Title": "IT Technician",
+      "OU": "OU=IT,OU=Users,OU=Example,DC=example,DC=com",
+      "ADGroups": ["IT Staff"],
+      "CloudGroups": ["IT Team"],
+      "SharePointSites": ["IT"],
+      "DistributionLists": ["it@example.com"],
+      "Licenses": ["AAD_PREMIUM_P2"]
+    }
+  },
+  "Offboarding": {
+    "DisabledOU": "OU=Disabled Users,OU=Example,DC=example,DC=com",
+    "ConvertToShared": true,
+    "RemoveLicenses": true,
+    "RemoveGroups": true,
+    "HideFromGAL": true,
+    "GrantManagerAccess": true,
+    "ForwardToManager": false,
+    "AutoReply": "Thank you for your message. {Name} no longer works at {Company}. Please contact {Manager} at {ManagerMail}."
+  }
+}

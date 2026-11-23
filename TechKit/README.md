@@ -7,11 +7,17 @@ installed on the PC.
 
 - Runs on **Windows PowerShell 5.1** (built into every Windows 10/11 and
   Server 2016+) and **PowerShell 7** (from the USB or the PC).
-- **61 scripts** in 8 categories, ready to use. Add your own by dropping a file
-  in a folder or with the built-in editor.
+- **87 scripts** in 8 categories, ready to use. Add your own by dropping a file
+  in a folder or with the built-in editor, or plug in whole **script libraries**
+  from GitHub (for example the AdminDroid M365 collection) with one click.
 - Runs scripts on **this PC**, on **remote computers** (WinRM, a typed list, a
   file, or an Active Directory search) and against **Microsoft 365** (Graph,
-  Exchange Online, Security & Compliance).
+  Exchange Online, Security & Compliance, Teams, SharePoint/PnP) and **Azure**.
+- **Identity lifecycle, Adaxes-style**: onboarding and offboarding driven by a
+  per-client rules file (naming convention, OUs, groups, licenses, Teams and
+  SharePoint by department), **roles** that limit what a technician sees,
+  **ticket and second-person approval** for changes, and an **audit log**.
+  See [docs/ADAXES-STYLE.md](docs/ADAXES-STYLE.md).
 - **Per-script elevation**: Tech Kit runs as a normal user and asks for UAC
   only when a script needs admin.
 - **Confirm + What-If**: scripts that change things ask first and can do a dry
@@ -94,6 +100,17 @@ Click **Microsoft 365: not connected** in the top bar.
 | App + certificate | Repeat visits without prompts. Needs an app registration in the tenant and a cert (thumbprint or a .pfx in `Certs`). Works for Graph and Exchange. |
 | App + client secret | Graph only (Exchange does not accept secrets). |
 
+Services: Microsoft Graph, Exchange Online, Security & Compliance, Microsoft
+Teams, SharePoint Online (PnP.PowerShell: PowerShell 7 and your own app ID) and
+Azure. **Create App Registration for Tech Kit** sets up a tenant for
+certificate sign-in in one go (app, permissions, admin consent, Exchange role,
+a .pfx in `Certs` and a saved profile). **Find Tenant ID** looks a tenant up
+from its domain before you connect.
+
+Scripts from libraries usually call `Connect-MgGraph` / `Connect-ExchangeOnline`
+themselves. Inside Tech Kit those calls reuse the connection you already made,
+so you sign in once per session.
+
 The Graph permission list is pre-filled from what your scripts declare. Save
 tenant details as a **profile** for next time (IDs only, never passwords or
 secrets). Graph sign-ins are kept in memory for the session only, so nothing
@@ -132,8 +149,11 @@ TechKit\
   Core\                engine, host, runners, window layouts (XAML)
   Scripts\             the library: one folder per category
   Templates\           starting points for new PowerShell, Python, Bash scripts
-  Config\              settings, color presets, module list, tenant profiles
+  Config\              settings, color presets, roles, module list, tenant profiles,
+                       Identity\<Client>.json rules for onboarding and offboarding
   Modules\             PowerShell modules carried on the USB (git-ignored)
+  Libraries\           downloaded script collections, one category each (git-ignored)
+  Logs\                audit.csv (git-ignored)
   Runtimes\            optional portable pwsh / python / git bash (git-ignored)
   Reports\             CSV and HTML exports (git-ignored)
   Certs\               optional .pfx files for M365 app sign-in (git-ignored)
@@ -161,3 +181,12 @@ detect), or drop a `.ps1` into a category folder and click **Reload library**.
   only runs the scripts you pick, but expect alerts on tightly monitored
   networks and agree on its use with the client first.
 - Graph sign-in logs and last sign-in dates need Entra ID P1.
+
+## Roles, approvals and audit
+
+**Settings > Role** switches between the roles in `Config\roles.json`
+(Administrator, Senior Tech, Helpdesk, Changes need approval, Read-only
+auditor, or your own). Roles hide scripts, the terminal and the editor, can
+require a ticket number and a second person's approval before changes, and are
+locked with an admin PIN. Every run of a script that makes changes is written
+to `Logs\audit.csv`. Details: [docs/ADAXES-STYLE.md](docs/ADAXES-STYLE.md).

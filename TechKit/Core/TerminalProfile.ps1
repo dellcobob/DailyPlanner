@@ -53,6 +53,11 @@ function global:tkconnect {
     Connect-TKM365 -Service $Service -Method $Method -Scopes (Get-TKAllScopes)
 }
 
+# Bash-style Tab completion (complete as far as possible, then list the options)
+if (Get-Module -ListAvailable -Name PSReadLine) {
+    try { Set-PSReadLineKeyHandler -Key Tab -Function Complete -ErrorAction Stop } catch { }
+}
+
 Set-Location -LiteralPath $global:TKConsoleRoot
 
 Write-Host ''

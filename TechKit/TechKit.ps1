@@ -559,9 +559,11 @@ function Set-TKBusy {
 }
 
 function Update-TKStatusText {
-    $count = @($script:Scripts).Count
-    $cats = @($script:Scripts | Select-Object -ExpandProperty CategoryFolder -Unique).Count
-    $ui.TxtStatus.Text = "Ready  |  $count scripts in $cats categories  |  Library: $(Get-TKPath Scripts)"
+    $count = @($script:Visible).Count
+    $cats = @($script:Visible | Select-Object -ExpandProperty CategoryFolder -Unique).Count
+    $roleText = ''
+    if ($script:RoleName -and $script:RoleName -ne 'Administrator') { $roleText = "  |  Role: $script:RoleName" }
+    $ui.TxtStatus.Text = "Ready  |  $count scripts in $cats categories$roleText  |  Library: $(Get-TKPath Scripts)"
 }
 
 function Start-TKWorker {
@@ -791,14 +793,16 @@ function Invoke-TKPump {
 function Import-TKLibrary {
     param([string]$SelectId)
     $script:Scripts = @(Get-TKScript | Sort-Object CategoryFolder, Name)
+    # The active role decides which scripts are visible
+    $script:Visible = @($script:Scripts | Where-Object { Test-TKRoleAllows $script:Role $_ })
     $favs = @($script:Settings.Favorites)
     $cats = New-Object System.Collections.ObjectModel.ObservableCollection[object]
     if ($favs.Count -gt 0) {
-        $n = @($script:Scripts | Where-Object { $favs -contains $_.Id }).Count
+        $n = @($script:Visible | Where-Object { $favs -contains $_.Id }).Count
         $cats.Add([pscustomobject]@{ Label = [string][char]0x2605 + '  Favorites'; Count = $n; Key = 'fav' })
     }
-    $cats.Add([pscustomobject]@{ Label = 'All scripts'; Count = $script:Scripts.Count; Key = 'all' })
-    foreach ($g in ($script:Scripts | Group-Object CategoryFolder | Sort-Object Name)) {
+    $cats.Add([pscustomobject]@{ Label = 'All scripts'; Count = $script:Visible.Count; Key = 'all' })
+    foreach ($g in ($script:Visible | Group-Object CategoryFolder | Sort-Object Name)) {
         $cats.Add([pscustomobject]@{ Label = $g.Group[0].Category; Count = $g.Count; Key = $g.Name })
     }
     $script:Categories = $cats
@@ -818,7 +822,7 @@ function Update-TKScriptList {
     $search = ''
     if ($ui.TxtSearch.Text) { $search = $ui.TxtSearch.Text.Trim().ToLowerInvariant() }
     $favs = @($script:Settings.Favorites)
-    $list = $script:Scripts
+    $list = $script:Visible
     $header = 'ALL SCRIPTS'
     if ($script:CurrentCategory -eq 'fav') {
         $list = @($list | Where-Object { $favs -contains $_.Id })
@@ -881,7 +885,8 @@ function Show-TKScriptDetails {
     $ui.IcBadges.ItemsSource = @(Get-TKFriendlyBadges $S)
     $ui.TxtDesc.Text = $S.Description
     $meta = New-Object System.Collections.Generic.List[string]
-    $meta.Add("File: Scripts\$($S.Id)")
+    $meta.Add("File: $($S.RelPath)")
+    if ($S.IsLibrary -and -not $S.HasHeader) { $meta.Add('Library script without a Tech Kit header: flags are guessed from the code') }
     if ($S.Modules.Count) { $meta.Add('Modules: ' + ($S.Modules -join ', ')) }
     if ($S.Scopes.Count) { $meta.Add('Graph scopes: ' + ($S.Scopes -join ', ')) }
     if ($S.Author) { $meta.Add('Author: ' + $S.Author) }
@@ -945,7 +950,14 @@ function New-TKParamControls {
         $label.Margin = New-TKThickness 0 0 0 4
         $ctl = $null
         $ctl2 = $null
-        switch ($p.Kind) {
+        # "# @Choices: Name = spec" turns a text input into a dropdown filled at run time
+        $kind = $p.Kind
+        $choiceList = @($p.Choices)
+        if ($S.Choices -and $S.Choices.Contains($p.Name)) {
+            $kind = 'Choice'
+            $choiceList = @(Resolve-TKChoices -Spec ([string]$S.Choices[$p.Name]))
+        }
+        switch ($kind) {
             { $_ -in @('Switch', 'Bool') } {
                 $ctl = New-Object System.Windows.Controls.CheckBox
                 $ctl.Content = $p.Name
@@ -955,7 +967,7 @@ function New-TKParamControls {
             }
             'Choice' {
                 $ctl = New-Object System.Windows.Controls.ComboBox
-                $opts = @($p.Choices)
+                $opts = @($choiceList)
                 if (-not $p.Mandatory -and -not $p.Default) { $opts = @('') + $opts }
                 foreach ($o in $opts) { $null = $ctl.Items.Add($o) }
                 if ($p.Default -and $opts -contains [string]$p.Default) { $ctl.SelectedItem = [string]$p.Default } else { $ctl.SelectedIndex = 0 }
@@ -998,12 +1010,12 @@ function New-TKParamControls {
             }
         }
         if ($label) { $null = $wrap.Children.Add($label) }
-        if ($p.Kind -eq 'Credential') { $null = $wrap.Children.Add($grid) } else { $null = $wrap.Children.Add($ctl) }
+        if ($kind -eq 'Credential') { $null = $wrap.Children.Add($grid) } else { $null = $wrap.Children.Add($ctl) }
 
         $hintParts = @()
         if ($p.Help) { $hintParts += $p.Help }
         if ($p.DefaultText) { $hintParts += "Default if empty: $($p.DefaultText)" }
-        if ($p.Kind -eq 'List') { $hintParts += 'One per line or comma separated.' }
+        if ($kind -eq 'List') { $hintParts += 'One per line or comma separated.' }
         if ($hintParts.Count) {
             $hint = New-Object System.Windows.Controls.TextBlock
             $hint.Text = $hintParts -join '  '
@@ -1014,7 +1026,7 @@ function New-TKParamControls {
             $null = $wrap.Children.Add($hint)
         }
         $null = $ui.PnlParams.Children.Add($wrap)
-        $script:ParamControls[$p.Name] = @{ Def = $p; Control = $ctl; Control2 = $ctl2 }
+        $script:ParamControls[$p.Name] = @{ Def = $p; Kind = $kind; Control = $ctl; Control2 = $ctl2 }
     }
 }
 
@@ -1031,7 +1043,7 @@ function Get-TKParamValues {
         $has = $false
         $value = $null
         $shown = ''
-        switch ($p.Kind) {
+        switch ($entry.Kind) {
             'Switch' {
                 if ($c.IsChecked) { $has = $true; $value = $true; $shown = 'on' }
             }
@@ -1075,7 +1087,7 @@ function Get-TKParamValues {
         $values[$name] = $value
         $summary.Add("$name = $shown")
         # Command-line form for Python and Bash scripts
-        if ($p.Kind -eq 'Switch') {
+        if ($entry.Kind -eq 'Switch') {
             $cliArgs.Add("--$name")
         } elseif ($value -is [securestring]) {
             $cliArgs.Add("--$name"); $cliArgs.Add((New-Object System.Net.NetworkCredential('', $value)).Password)
@@ -1109,13 +1121,17 @@ function Get-TKM365StatusSafe {
 function Update-TKM365Indicator {
     $st = Get-TKM365StatusSafe
     $script:M365Status = $st
-    if ($st -and ($st.Graph -or $st.Exchange -or $st.Compliance)) {
+    if ($st -and ($st.Graph -or $st.Exchange -or $st.Compliance -or $st.Teams -or $st.SharePoint -or $st.Azure)) {
         $svc = @()
         if ($st.Graph) { $svc += 'Graph' }
         if ($st.Exchange) { $svc += 'Exchange' }
         if ($st.Compliance) { $svc += 'Compliance' }
+        if ($st.Teams) { $svc += 'Teams' }
+        if ($st.SharePoint) { $svc += 'SharePoint' }
+        if ($st.Azure) { $svc += 'Azure' }
         $who = $st.GraphAccount
         if (-not $who) { $who = $st.ExchangeAccount }
+        if (-not $who) { $who = $st.Azure }
         if (-not $who) { $who = 'connected' }
         $ui.TxtM365.Text = "M365: $who  ($($svc -join ', '))"
         Set-TKResourceRef $ui.DotM365 ([System.Windows.Shapes.Shape]::FillProperty) 'SuccessBrush'
@@ -1132,6 +1148,9 @@ function Test-TKM365Ready {
     if ($S.Connect -contains 'Graph' -and -not ($st -and $st.Graph)) { $missing += 'Microsoft Graph' }
     if ($S.Connect -contains 'Exchange' -and -not ($st -and $st.Exchange)) { $missing += 'Exchange Online' }
     if ($S.Connect -contains 'Compliance' -and -not ($st -and $st.Compliance)) { $missing += 'Security & Compliance' }
+    if ($S.Connect -contains 'Teams' -and -not ($st -and $st.Teams)) { $missing += 'Microsoft Teams' }
+    if ($S.Connect -contains 'SharePoint' -and -not ($st -and $st.SharePoint)) { $missing += 'SharePoint Online' }
+    if ($S.Connect -contains 'Azure' -and -not ($st -and $st.Azure)) { $missing += 'Azure' }
     if ($missing.Count) {
         $r = Show-TKDialog -Title 'Connect to Microsoft 365 first' -Message ("This script needs: " + ($missing -join ', ') + ".`n`nConnect now? After you sign in, press Run again.") -Buttons @('Connect now', 'Cancel')
         if ($r.Button -eq 'Connect now') { Show-TKConnectDialog -Services $S.Connect }
@@ -1166,6 +1185,9 @@ function Show-TKConnectDialog {
         $d.ChkGraph.IsChecked = $Services -contains 'Graph'
         $d.ChkExchange.IsChecked = $Services -contains 'Exchange'
         $d.ChkCompliance.IsChecked = $Services -contains 'Compliance'
+        $d.ChkTeams.IsChecked = $Services -contains 'Teams'
+        $d.ChkSharePoint.IsChecked = $Services -contains 'SharePoint'
+        $d.ChkAzure.IsChecked = $Services -contains 'Azure'
     }
     $d.Window.Tag = $d
 
@@ -1174,13 +1196,17 @@ function Show-TKConnectDialog {
         $dd = [System.Windows.Window]::GetWindow($sender).Tag
         if (-not $dd) { return }
         $app = $dd.RbCert.IsChecked -or $dd.RbSecret.IsChecked
-        $dd.PnlApp.Visibility = $(if ($app) { 'Visible' } else { 'Collapsed' })
+        $dd.PnlApp.Visibility = $(if ($app -or $dd.ChkSharePoint.IsChecked) { 'Visible' } else { 'Collapsed' })
+        $dd.PnlSpo.Visibility = $(if ($dd.ChkSharePoint.IsChecked) { 'Visible' } else { 'Collapsed' })
         $dd.PnlCert.Visibility = $(if ($dd.RbCert.IsChecked) { 'Visible' } else { 'Collapsed' })
         $dd.PnlSecret.Visibility = $(if ($dd.RbSecret.IsChecked) { 'Visible' } else { 'Collapsed' })
         $dd.PnlUpn.Visibility = $(if ($dd.RbInteractive.IsChecked) { 'Visible' } else { 'Collapsed' })
         $dd.PnlScopes.Visibility = $(if ($app) { 'Collapsed' } else { 'Visible' })
     }
     foreach ($rb in @($d.RbInteractive, $d.RbDevice, $d.RbCert, $d.RbSecret)) { $rb.Add_Checked($refresh) }
+    $d.ChkSharePoint.Add_Checked($refresh)
+    $d.ChkSharePoint.Add_Unchecked($refresh)
+    if ($d.ChkSharePoint.IsChecked) { $d.PnlSpo.Visibility = 'Visible'; $d.PnlApp.Visibility = 'Visible' }
 
     $d.CmbProfile.Add_SelectionChanged({
         param($sender, $e)
@@ -1195,6 +1221,7 @@ function Show-TKConnectDialog {
         $dd.TxtPfx.Text = [string]$p.PfxPath
         $dd.TxtOrg.Text = [string]$p.Organization
         $dd.TxtUpn.Text = [string]$p.UserPrincipalName
+        $dd.TxtSpoUrl.Text = [string]$p.SharePointUrl
         if ($p.Scopes) { $dd.TxtScopes.Text = [string]$p.Scopes }
         switch ([string]$p.Method) {
             'DeviceCode' { $dd.RbDevice.IsChecked = $true }
@@ -1207,6 +1234,9 @@ function Show-TKConnectDialog {
             $dd.ChkGraph.IsChecked = $svc -contains 'Graph'
             $dd.ChkExchange.IsChecked = $svc -contains 'Exchange'
             $dd.ChkCompliance.IsChecked = $svc -contains 'Compliance'
+            $dd.ChkTeams.IsChecked = $svc -contains 'Teams'
+            $dd.ChkSharePoint.IsChecked = $svc -contains 'SharePoint'
+            $dd.ChkAzure.IsChecked = $svc -contains 'Azure'
         }
     })
 
@@ -1231,11 +1261,14 @@ function Show-TKConnectDialog {
         if ($dd.ChkGraph.IsChecked) { $svc += 'Graph' }
         if ($dd.ChkExchange.IsChecked) { $svc += 'Exchange' }
         if ($dd.ChkCompliance.IsChecked) { $svc += 'Compliance' }
+        if ($dd.ChkTeams.IsChecked) { $svc += 'Teams' }
+        if ($dd.ChkSharePoint.IsChecked) { $svc += 'SharePoint' }
+        if ($dd.ChkAzure.IsChecked) { $svc += 'Azure' }
         $list = @(Get-TKTenantProfiles | Where-Object { $_.Name -ne $name })
         $list += [pscustomobject]@{
             Name = $name; TenantId = $dd.TxtTenant.Text.Trim(); ClientId = $dd.TxtClientId.Text.Trim(); Thumbprint = $dd.TxtThumb.Text.Trim()
             PfxPath = $dd.TxtPfx.Text.Trim(); Organization = $dd.TxtOrg.Text.Trim(); UserPrincipalName = $dd.TxtUpn.Text.Trim()
-            Method = $method; Services = ($svc -join ','); Scopes = $dd.TxtScopes.Text.Trim()
+            Method = $method; Services = ($svc -join ','); Scopes = $dd.TxtScopes.Text.Trim(); SharePointUrl = $dd.TxtSpoUrl.Text.Trim()
         }
         Save-TKTenantProfiles -Profiles $list
         if (-not $dd.CmbProfile.Items.Contains($name)) { $null = $dd.CmbProfile.Items.Add($name) }
@@ -1277,6 +1310,9 @@ function Show-TKConnectDialog {
     if ($d.ChkGraph.IsChecked) { $svc += 'Graph' }
     if ($d.ChkExchange.IsChecked) { $svc += 'Exchange' }
     if ($d.ChkCompliance.IsChecked) { $svc += 'Compliance' }
+    if ($d.ChkTeams.IsChecked) { $svc += 'Teams' }
+    if ($d.ChkSharePoint.IsChecked) { $svc += 'SharePoint' }
+    if ($d.ChkAzure.IsChecked) { $svc += 'Azure' }
     if (-not $svc.Count) { Show-TKMessage 'Pick at least one service to connect to.'; return }
 
     $method = Get-TKConnectMethod $d
@@ -1290,12 +1326,16 @@ function Show-TKConnectDialog {
     if ($d.PwdSecret.SecurePassword.Length) { $a.ClientSecret = $d.PwdSecret.SecurePassword }
     if ($d.TxtOrg.Text.Trim()) { $a.Organization = $d.TxtOrg.Text.Trim() }
     if ($d.TxtUpn.Text.Trim() -and $method -eq 'Interactive') { $a.UserPrincipalName = $d.TxtUpn.Text.Trim() }
+    if ($d.TxtSpoUrl.Text.Trim()) { $a.SharePointUrl = $d.TxtSpoUrl.Text.Trim() }
     $scopes = @($d.TxtScopes.Text -split '[\s,;]+' | Where-Object { $_ })
     if ($scopes.Count) { $a.Scopes = $scopes }
 
     $missing = @()
     if ($svc -contains 'Graph') { $missing += @(Get-TKMissingModule -Name 'Microsoft.Graph.Authentication') }
     if ($svc -contains 'Exchange' -or $svc -contains 'Compliance') { $missing += @(Get-TKMissingModule -Name 'ExchangeOnlineManagement') }
+    if ($svc -contains 'Teams') { $missing += @(Get-TKMissingModule -Name 'MicrosoftTeams') }
+    if ($svc -contains 'SharePoint') { $missing += @(Get-TKMissingModule -Name 'PnP.PowerShell') }
+    if ($svc -contains 'Azure') { $missing += @(Get-TKMissingModule -Name 'Az.Accounts') }
     if ($missing.Count) {
         $null = Request-TKModuleInstall -Missing $missing
         return
@@ -1363,6 +1403,7 @@ function Invoke-TKRun {
     if ($script:Job) { Write-TKLine -Text 'Something is already running. Wait for it or press Stop.' -Kind Warning; return }
     if ($s.ParseErrors.Count) { Show-TKMessage -Title 'Script has errors' -Message 'Fix the syntax errors in this script before running it (Edit > Check syntax).' -Detail ($s.ParseErrors -join "`n"); return }
     if (-not (Test-Path -LiteralPath $s.Path)) { Show-TKMessage 'The script file is gone. Reloading the library.'; Import-TKLibrary; return }
+    if (-not (Test-TKRoleAllows $script:Role $s)) { Show-TKMessage -Title 'Not allowed' -Message "The '$script:RoleName' role cannot run this script."; return }
 
     $pv = Get-TKParamValues $s
     if (-not $pv.Ok) { Show-TKMessage -Title 'Check the inputs' -Message ($pv.Problems -join "`n"); return }
@@ -1416,6 +1457,33 @@ function Invoke-TKRun {
         elseif ($r.Button -ne 'Run it') { return }
     }
 
+    # Adaxes-style controls from Config\roles.json: ticket/reason and a second-person approval
+    $ticket = ''
+    $approver = ''
+    if ($s.Changes -and -not $DryRun) {
+        if (Get-TKRoleValue $script:Role 'RequireTicket' $false) {
+            $r = Show-TKDialog -Title 'Ticket or reason needed' -Message "The '$script:RoleName' role needs a ticket number or a short reason for changes. It goes into the audit log." -InputKind Text -Buttons @('Continue', 'Cancel')
+            if ($r.Button -ne 'Continue') { return }
+            if (-not $r.Text -or -not $r.Text.Trim()) { Show-TKMessage 'A ticket number or reason is required.'; return }
+            $ticket = $r.Text.Trim()
+        }
+        if (Get-TKRoleValue $script:Role 'RequireApproval' $false) {
+            $group = [string]$script:RoleConfig.Approval.ApproverGroup
+            $msg = 'A second person has to approve this change by signing in here.'
+            if ($group) { $msg += " They must be in the '$group' group." }
+            $r = Show-TKDialog -Title 'Approval needed' -Message $msg -Detail "Script:  $($s.Name)`nTarget:  $where`n$($pv.Summary -join "`n")" -InputKind Credential -Buttons @('Approve', 'Cancel') -Width 560
+            if ($r.Button -ne 'Approve' -or -not $r.Credential) { return }
+            $check = $null
+            try { $check = Test-TKApprover -Credential $r.Credential -Group $group } catch { $check = [pscustomobject]@{ Ok = $false; Reason = $_.Exception.Message } }
+            if (-not $check.Ok) {
+                Write-TKAuditSafe ([ordered]@{ Script = $s; Where = $where; Inputs = $pv.Summary; DryRun = $false; Ticket = $ticket; Approver = $r.Credential.UserName; Result = "Approval denied: $($check.Reason)"; Errors = 0; Seconds = 0 })
+                Show-TKMessage -Title 'Not approved' -Message $check.Reason
+                return
+            }
+            $approver = $check.Approver
+        }
+    }
+
     $invoke = @{ Path = $s.Path; Parameters = $pv.Values; Arguments = $pv.Args; ComputerName = [string[]]$targets; DryRun = [bool]$DryRun }
     if ($script:RunAsCred -and $remote.Count) { $invoke.Credential = $script:RunAsCred }
 
@@ -1430,7 +1498,11 @@ function Invoke-TKRun {
     if ($pv.Summary.Count) { Write-TKLine -Text ('   ' + ($pv.Summary -join '   ')) -Kind Verbose }
     if ($script:RunAsCred -and $remote.Count) { Write-TKLine -Text "   Remote connections use $($script:RunAsCred.UserName)" -Kind Verbose }
 
-    $script:LastRun = @{ Script = $s; Where = $where; Time = Get-Date; DryRun = [bool]$DryRun }
+    $runAs = ''
+    if ($script:RunAsCred -and $remote.Count) { $runAs = $script:RunAsCred.UserName }
+    $script:LastRun = @{ Script = $s; Where = $where; Time = Get-Date; DryRun = [bool]$DryRun; Inputs = $pv.Summary; Ticket = $ticket; Approver = $approver; RunAs = $runAs }
+    if ($ticket) { Write-TKLine -Text "   Ticket / reason: $ticket" -Kind Verbose }
+    if ($approver) { Write-TKLine -Text "   Approved by $approver" -Kind Verbose }
     $done = {
         param($ok, $job)
         $secs = [Math]::Round(([DateTime]::Now - $job.Started).TotalSeconds, 1)
@@ -1442,6 +1514,16 @@ function Invoke-TKRun {
             Write-TKLine -Text ("{0} Finished with {1} error(s) in {2} s" -f [char]0x2716, [Math]::Max(1, $script:RunErrors), $secs) -Kind Error
         }
         $script:LastRun.Text = $script:RunText.ToString()
+        if ($script:LastRun.Script.Changes) {
+            $result = 'Done'
+            if ($job.Stopped) { $result = 'Stopped' } elseif (-not $ok -or $script:RunErrors -gt 0) { $result = 'Finished with errors' }
+            $entry = [ordered]@{
+                Script = $script:LastRun.Script; Where = $script:LastRun.Where; Inputs = $script:LastRun.Inputs; DryRun = $script:LastRun.DryRun
+                Ticket = $script:LastRun.Ticket; Approver = $script:LastRun.Approver; RunAs = $script:LastRun.RunAs
+                Result = $result; Errors = $script:RunErrors; Seconds = $secs; Time = $script:LastRun.Time
+            }
+            Write-TKAuditSafe $entry
+        }
     }
     if ($needElevate) {
         Write-TKLine -Text '   Asking Windows for administrator approval (UAC)...' -Kind Verbose
@@ -1631,6 +1713,77 @@ function Set-TKRunAs {
 }
 
 # ---------------------------------------------------------------------------
+#  Roles, PIN and audit
+# ---------------------------------------------------------------------------
+
+function Write-TKAuditSafe {
+    param([System.Collections.IDictionary]$Info)
+    if (-not $script:Settings.AuditChanges) { return }
+    $time = $Info.Time
+    if (-not $time) { $time = Get-Date }
+    try {
+        Write-TKAudit -Entry ([ordered]@{
+            Time     = $time.ToString('yyyy-MM-dd HH:mm:ss')
+            Operator = "$env:USERDOMAIN\$env:USERNAME"
+            Computer = $env:COMPUTERNAME
+            Role     = $script:RoleName
+            Script   = $Info.Script.Name
+            File     = $Info.Script.RelPath
+            Target   = $Info.Where
+            Inputs   = (@($Info.Inputs) -join '; ')
+            WhatIf   = [bool]$Info.DryRun
+            Ticket   = [string]$Info.Ticket
+            Approver = [string]$Info.Approver
+            RunAs    = [string]$Info.RunAs
+            Result   = [string]$Info.Result
+            Errors   = [int]$Info.Errors
+            Seconds  = $Info.Seconds
+        })
+    } catch {
+        Write-TKLine -Text "The audit log could not be written: $($_.Exception.Message)" -Kind Warning
+    }
+}
+
+function Get-TKPinHash {
+    param([securestring]$Pin)
+    $plain = (New-Object System.Net.NetworkCredential('', $Pin)).Password
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes('TechKit:' + $plain)))) -replace '-', ''
+}
+
+function Test-TKPinGate {
+    # Leaving a restricted role (or changing its settings) needs the admin PIN, if one is set.
+    if ($script:RoleName -eq 'Administrator' -or -not $script:Settings.RolePinHash) { return $true }
+    $r = Show-TKDialog -Title 'Admin PIN' -Message "The '$script:RoleName' role is locked. Enter the admin PIN to change roles or safety settings." -InputKind Password -Buttons @('OK', 'Cancel')
+    if ($r.Button -ne 'OK') { return $false }
+    if ((Get-TKPinHash $r.Secure) -eq $script:Settings.RolePinHash) { return $true }
+    Show-TKMessage 'Wrong PIN.'
+    $false
+}
+
+function Set-TKActiveRole {
+    $script:RoleConfig = Get-TKRoles
+    $name = [string]$script:Settings.ActiveRole
+    if (-not $name -or -not $script:RoleConfig.Roles.Contains($name)) { $name = 'Administrator' }
+    $script:RoleName = $name
+    $script:Role = $script:RoleConfig.Roles[$name]
+    $edit = [bool](Get-TKRoleValue $script:Role 'AllowEditing' $true)
+    $term = [bool](Get-TKRoleValue $script:Role 'AllowTerminal' $true)
+    $vis = { param($b) if ($b) { 'Visible' } else { 'Collapsed' } }
+    $ui.BtnNewScript.Visibility = & $vis $edit
+    $ui.BtnOpenScripts.Visibility = & $vis $edit
+    $ui.BtnEdit.Visibility = & $vis $edit
+    $ui.BtnConsole.Visibility = & $vis $term
+    $ui.TabItemTerminal.Visibility = & $vis $term
+    if (-not $term) { $ui.TabOutput.SelectedItem = $ui.TabItemOutput }
+    $edition = $(if ($PSVersionTable.PSEdition -eq 'Core') { 'PowerShell' } else { 'Windows PowerShell' })
+    $who = $(if ($script:IsAdmin) { 'Administrator' } else { 'Standard user (UAC per script)' })
+    $roleText = ''
+    if ($name -ne 'Administrator') { $roleText = "  |  Role: $name" }
+    $ui.TxtShellInfo.Text = "$edition $($PSVersionTable.PSVersion)  |  $who  |  $env:COMPUTERNAME$roleText"
+}
+
+# ---------------------------------------------------------------------------
 #  Favorites, files
 # ---------------------------------------------------------------------------
 
@@ -1742,6 +1895,20 @@ function Show-TKSettingsDialog {
     $d.ChkWT.IsChecked = [bool]$script:Settings.UseWindowsTerminal
     $d.TxtReports.Text = [string]$script:Settings.ReportFolder
     $d.ChkConfirm.IsChecked = [bool]$script:Settings.ConfirmChanges
+    $d.ChkAudit.IsChecked = [bool]$script:Settings.AuditChanges
+    $d.RoleConfig = Get-TKRoles
+    foreach ($rn in $d.RoleConfig.Roles.Keys) { $null = $d.CmbRole.Items.Add($rn) }
+    $d.CmbRole.SelectedItem = $script:RoleName
+    $d.TxtRoleInfo.Text = [string]$d.RoleConfig.Roles[$script:RoleName]['Description']
+    $d.CmbRole.Add_SelectionChanged({
+        param($sender, $e)
+        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        if ($dd) { $dd.TxtRoleInfo.Text = [string]$dd.RoleConfig.Roles[[string]$sender.SelectedItem]['Description'] }
+    })
+    if ($script:RoleName -ne 'Administrator' -and $script:Settings.RolePinHash) {
+        $d.ChkConfirm.IsEnabled = $false
+        $d.ChkAudit.IsEnabled = $false
+    }
     Update-TKSettingsPreview $d
 
     $d.CmbPreset.Add_SelectionChanged({
@@ -1786,9 +1953,26 @@ function Show-TKSettingsDialog {
     $script:Settings.UseWindowsTerminal = [bool]$d.ChkWT.IsChecked
     $script:Settings.ReportFolder = $d.TxtReports.Text.Trim()
     $script:Settings.ConfirmChanges = [bool]$d.ChkConfirm.IsChecked
+    $script:Settings.AuditChanges = [bool]$d.ChkAudit.IsChecked
+    $newRole = [string]$d.CmbRole.SelectedItem
+    if (-not $newRole) { $newRole = $script:RoleName }
+    $pinChanged = $d.PwdPin.SecurePassword.Length -gt 0
+    if ($newRole -ne $script:RoleName -or $pinChanged) {
+        if (Test-TKPinGate) {
+            $script:Settings.ActiveRole = $newRole
+            if ($pinChanged) { $script:Settings.RolePinHash = Get-TKPinHash $d.PwdPin.SecurePassword }
+            if ($newRole -ne 'Administrator' -and -not $script:Settings.RolePinHash) {
+                Show-TKMessage "Role set to '$newRole'. No admin PIN is set, so anyone can switch back in Settings. Set a PIN to lock it."
+            }
+        }
+    }
     try { Save-TKSettings -Settings $script:Settings } catch { Show-TKMessage -Title 'Settings not saved' -Message "Could not write Config\settings.json (is the USB read-only?)`n`n$($_.Exception.Message)" }
     Set-TKTheme $script:Settings.Colors
     Set-TKFonts
+    Set-TKActiveRole
+    $keep = $null
+    if ($script:Selected) { $keep = $script:Selected.Id }
+    Import-TKLibrary -SelectId $keep
     if ($oldShell -ne $script:Settings.PreferredShell) {
         Show-TKMessage 'The PowerShell choice takes effect the next time you start Tech Kit.'
     }
@@ -1972,7 +2156,7 @@ function Show-TKEditor {
     $null = $d.Window.ShowDialog()
     if ($d.Result -eq 'saved') {
         Import-TKLibrary -SelectId $d.SavedId
-        Write-TKLine -Text "Saved script: Scripts\$($d.SavedId)" -Kind Success
+        Write-TKLine -Text "Saved script: $($d.SavedId)" -Kind Success
     }
 }
 
@@ -2052,10 +2236,15 @@ function Save-TKEditor {
             $folder = ('{0:D2} {1}' -f $next, $newCat)
         }
     }
-    if (-not $folder) { Show-TKMessage 'Pick a category or type a new one.'; return $false }
-    $dir = Join-Path $scriptsRoot $folder
-    if (-not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
-    $target = Join-Path $dir $fileName
+    if ($D.Existing -and $D.Existing.IsLibrary) {
+        # Library scripts stay where they are
+        $target = $D.Existing.Path
+    } else {
+        if (-not $folder) { Show-TKMessage 'Pick a category or type a new one.'; return $false }
+        $dir = Join-Path $scriptsRoot $folder
+        if (-not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+        $target = Join-Path $dir $fileName
+    }
 
     $body = $D.TxtBody.Text
     if ($lang -eq 'PowerShell') {
@@ -2094,7 +2283,9 @@ function Save-TKEditor {
         if ($r.Button -ne 'Overwrite') { return $false }
     }
     try {
-        Set-TKScriptContent -Path $target -Meta $meta -ParamLines $paramLines -Body $body -Shebang ([string]$D.Shebang)
+        $choices = @{}
+        if ($D.Existing -and $D.Existing.Choices) { $choices = $D.Existing.Choices }
+        Set-TKScriptContent -Path $target -Meta $meta -ParamLines $paramLines -Body $body -Shebang ([string]$D.Shebang) -Choices $choices
         if ($D.Existing -and $D.Existing.Path -ne $target -and (Test-Path -LiteralPath $D.Existing.Path)) {
             Remove-Item -LiteralPath $D.Existing.Path -Force
         }
@@ -2102,7 +2293,7 @@ function Save-TKEditor {
         Show-TKMessage -Title 'Could not save' -Message $_.Exception.Message
         return $false
     }
-    $D.SavedId = "$folder\$fileName"
+    if ($D.Existing -and $D.Existing.IsLibrary) { $D.SavedId = $D.Existing.Id } else { $D.SavedId = "$folder\$fileName" }
     $true
 }
 
@@ -2132,6 +2323,7 @@ try {
     $role = $(if ($script:IsAdmin) { 'Administrator' } else { 'Standard user (UAC per script)' })
     $ui.TxtShellInfo.Text = "$edition $($PSVersionTable.PSVersion)  |  $role  |  $env:COMPUTERNAME"
     if ($script:IsAdmin) { $ui.BtnElevate.Visibility = 'Collapsed' }
+    Set-TKActiveRole
     $script:Win.Title = "Tech Kit  -  $env:COMPUTERNAME"
 } catch {
     Show-TKFatal ("Tech Kit could not build its window.`n`n" + $_.Exception.Message)
@@ -2290,10 +2482,10 @@ $script:Win.Add_PreviewKeyDown({
     } elseif ($e.Key -eq [System.Windows.Input.Key]::F5 -and -not $script:Job) {
         $e.Handled = $true
         Invoke-TKRun
-    } elseif ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::E -and $script:Selected) {
+    } elseif ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::E -and $script:Selected -and (Get-TKRoleValue $script:Role 'AllowEditing' $true)) {
         $e.Handled = $true
         Show-TKEditor -Existing $script:Selected
-    } elseif ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::OemTilde) {
+    } elseif ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::OemTilde -and (Get-TKRoleValue $script:Role 'AllowTerminal' $true)) {
         $e.Handled = $true
         $ui.TabOutput.SelectedItem = $ui.TabItemTerminal
     }

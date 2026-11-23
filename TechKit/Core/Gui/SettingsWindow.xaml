@@ -53,7 +53,16 @@
                            FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0"/>
 
                 <TextBlock Text="SAFETY" Style="{StaticResource SectionLabel}"/>
-                <CheckBox x:Name="ChkConfirm" Content="Ask for confirmation before running scripts that make changes (recommended)"/>
+                <CheckBox x:Name="ChkConfirm" Content="Ask for confirmation before running scripts that make changes (recommended)" Margin="0,0,0,6"/>
+                <CheckBox x:Name="ChkAudit" Content="Record every run of a script that makes changes in Logs\audit.csv"/>
+
+                <TextBlock Text="ROLE (DELEGATION)" Style="{StaticResource SectionLabel}"/>
+                <ComboBox x:Name="CmbRole"/>
+                <TextBlock x:Name="TxtRoleInfo" FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                <TextBlock Text="Roles are defined in Config\roles.json. They limit what this Tech Kit shows and runs (for example when you hand the USB to a junior tech). Scripts still run with the signed-in account's own rights."
+                           FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,8" TextWrapping="Wrap"/>
+                <TextBlock Text="Admin PIN (needed to leave a restricted role; leave empty to keep the current PIN)" Margin="0,0,0,4"/>
+                <PasswordBox x:Name="PwdPin" MaxWidth="240" HorizontalAlignment="Left" MinWidth="200"/>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

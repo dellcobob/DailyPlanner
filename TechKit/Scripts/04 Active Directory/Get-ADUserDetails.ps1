@@ -31,6 +31,19 @@ if ($id -match '\*') {
 }
 if (-not $users.Count) { throw "No user matches '$id'." }
 
+if ($users.Count -gt 1 -and $users.Count -le 12) {
+    # Let the technician pick one (a dialog in Tech Kit, a numbered menu in a console)
+    $choices = New-Object 'System.Collections.ObjectModel.Collection[System.Management.Automation.Host.ChoiceDescription]'
+    for ($i = 0; $i -lt $users.Count; $i++) {
+        $hot = $(if ($i -lt 9) { '&' + ($i + 1) + ' ' } else { '' })
+        $label = "$hot$($users[$i].Name) ($($users[$i].SamAccountName))"
+        $choices.Add((New-Object System.Management.Automation.Host.ChoiceDescription($label, [string]$users[$i].UserPrincipalName)))
+    }
+    try {
+        $pick = $Host.UI.PromptForChoice('Several users match', "Pick one of the $($users.Count) users matching '$id'.", $choices, 0)
+        $users = @($users[$pick])
+    } catch { }
+}
 if ($users.Count -gt 1) {
     Write-Host "$($users.Count) users match. Run again with one logon name for full details." -ForegroundColor Yellow
     $users | ForEach-Object {

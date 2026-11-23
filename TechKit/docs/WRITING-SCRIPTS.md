@@ -50,6 +50,7 @@ Put these lines at the very top (Python and Bash: after the `#!` line).
 | WhatIf | Yes / No | Override What-If detection (normally automatic). |
 | OS, Tags, Author, Version | text | Shown and searchable. |
 | Param | see Python/Bash | Inputs for non-PowerShell scripts. |
+| Choices | `Name = spec` | Turns an input into a dropdown filled when the script is selected (see below). |
 
 ## PowerShell inputs
 
@@ -80,6 +81,31 @@ param(
   (`$env:COMPUTERNAME`) are shown as a hint and left to the script.
 - Do not use `Read-Host` for normal inputs. It works (Tech Kit pops up a
   dialog) but parameters are clearer and work for remote and elevated runs.
+
+## Dropdowns from files (`@Choices`)
+
+```powershell
+# @Choices:     RulesProfile = files:Identity\*.json
+# @Choices:     Department = jsonkeys:Identity\*.json:Departments
+# @Choices:     Site = list:London, Paris, New York
+```
+
+| Spec | Values |
+|---|---|
+| `files:<pattern>` | File names without extension, pattern relative to `Config` |
+| `jsonkeys:<pattern>:<Property>` | Property names of that object in each matching JSON file |
+| `list:a, b, c` | A fixed list |
+
+The parameter stays a normal `[string]`, so the script still runs outside Tech
+Kit. Inside Tech Kit, `$env:TECHKIT_ROOT` points at the kit, so a script that
+runs on this PC can read `Config` files or write to `Reports`.
+
+## Asking the technician to pick
+
+`$Host.UI.PromptForChoice()` shows a dialog with one button per choice (a
+numbered menu in a console). The user lookups use it when several users match.
+Prompts cannot be answered during elevated (UAC) runs: they stop the script
+instead of picking a default.
 
 ## What-If
 
@@ -167,3 +193,17 @@ key (no password prompt), for example via `ssh-agent` or `~/.ssh/config`.
 
 Review anything you paste from the internet before running it on a client's
 network. Tech Kit runs scripts with your rights.
+
+## Script libraries
+
+Any folder under `Libraries\` is shown as its own category (badge LIB). Use
+**Add Script Library from GitHub** in the Tech Kit category, or copy a folder in
+and click **Reload library**. Library scripts need no Tech Kit header: the name
+comes from a `Name:` line or `.SYNOPSIS` in their opening comment (or the folder
+name), inputs come from `param()`, and the *makes changes* and *Microsoft 365*
+flags are guessed from the code. To fine-tune a library script, open it in the
+editor and save: Tech Kit adds a proper header in place.
+
+Libraries are not committed to git because they are other people's code. Check
+each repository's license before sharing it, and review scripts before running
+them on a client network.

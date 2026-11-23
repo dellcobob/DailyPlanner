@@ -363,8 +363,8 @@ namespace TechKit
             sink.Ask(r);
             if (r.Cancelled)
             {
-                if (defaultChoice >= 0) return defaultChoice;
-                throw new PromptingException("Choice was cancelled.");
+                // Never fall back to the default: for ShouldContinue the default is "Yes".
+                throw new PromptingException(sink.Interactive ? "Choice was cancelled." : "This prompt cannot be answered in an elevated run. Restart Tech Kit as admin to answer prompts.");
             }
             return Convert.ToInt32(Unwrap(r.Response), CultureInfo.InvariantCulture);
         }
