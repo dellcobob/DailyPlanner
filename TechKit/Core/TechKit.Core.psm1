@@ -30,9 +30,10 @@ function Initialize-TKEnvironment {
     # Put the USB Modules folder first so modules carried on the drive win.
     $mods = Get-TKPath Modules
     if (-not (Test-Path -LiteralPath $mods)) { $null = New-Item -ItemType Directory -Path $mods -Force -ErrorAction SilentlyContinue }
-    $parts = @($env:PSModulePath -split ';' | Where-Object { $_ })
+    $sep = [IO.Path]::PathSeparator
+    $parts = @($env:PSModulePath -split [regex]::Escape([string]$sep) | Where-Object { $_ })
     if ($parts -notcontains $mods) {
-        $env:PSModulePath = (@($mods) + $parts) -join ';'
+        $env:PSModulePath = (@($mods) + $parts) -join $sep
     }
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
@@ -58,7 +59,8 @@ function Test-TKLocalName {
     param([string]$Name)
     $n = $Name.Trim().ToLowerInvariant()
     if ($n -in @('', '.', 'localhost', '127.0.0.1', '::1')) { return $true }
-    $me = $env:COMPUTERNAME.ToLowerInvariant()
+    $me = ([string]$env:COMPUTERNAME).ToLowerInvariant()
+    if (-not $me) { $me = [Environment]::MachineName.ToLowerInvariant() }
     if ($n -eq $me) { return $true }
     if ($n.StartsWith($me + '.')) { return $true }
     $false
@@ -69,15 +71,15 @@ function Get-TKShellInfo {
     $pwsh = $null
     $candidates = @(
         (Join-Path $script:TKRoot 'Runtimes\pwsh\pwsh.exe'),
-        (Join-Path $env:ProgramFiles 'PowerShell\7\pwsh.exe')
+        (Join-TKPathSafe $env:ProgramFiles 'PowerShell\7\pwsh.exe')
     )
     foreach ($c in $candidates) { if ($c -and (Test-Path -LiteralPath $c)) { $pwsh = $c; break } }
     if (-not $pwsh) {
         $cmd = Get-Command pwsh.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($cmd) { $pwsh = $cmd.Source }
     }
-    $winps = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    if (-not (Test-Path -LiteralPath $winps)) { $winps = $null }
+    $winps = Join-TKPathSafe $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    if ($winps -and -not (Test-Path -LiteralPath $winps)) { $winps = $null }
     [pscustomobject]@{
         Current        = $current
         Edition        = $PSVersionTable.PSEdition
@@ -101,6 +103,7 @@ function Unblock-TKFiles {
         if ($newer) { $needed = $true }
     }
     if (-not $needed) { return }
+    if (-not (Get-Command Unblock-File -ErrorAction SilentlyContinue)) { return }
     Write-Host 'Preparing Tech Kit files (one-time unblock)...' -ForegroundColor DarkGray
     Get-ChildItem -LiteralPath $script:TKRoot -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
     try { Set-Content -LiteralPath $marker -Value (Get-Date -Format o) -ErrorAction Stop } catch { }
@@ -248,7 +251,7 @@ function Read-TKHeader {
     # to "Name:" / "Description:" lines or .SYNOPSIS in their opening comment.
     param([Parameter(Mandatory)][string]$Path)
     $meta = [ordered]@{}
-    $params = New-Object System.Collections.Generic.List[string]
+    $params = [System.Collections.Generic.List[string]]::new()
     $choices = [ordered]@{}
     $lines = @(Get-Content -LiteralPath $Path -TotalCount 150 -Encoding UTF8 -ErrorAction Stop)
     foreach ($line in $lines) {
@@ -283,7 +286,7 @@ function Resolve-TKChoices {
     #   list:a, b, c                     -> a fixed list
     param([string]$Spec)
     $cfg = Get-TKPath Config
-    $out = New-Object System.Collections.Generic.List[string]
+    $out = [System.Collections.Generic.List[string]]::new()
     try {
         if ($Spec -match '^files:(.+)$') {
             Get-ChildItem -Path (Join-Path $cfg $Matches[1].Trim()) -File -ErrorAction SilentlyContinue |
@@ -330,7 +333,7 @@ function Get-TKPsParameters {
         }
     }
 
-    $list = New-Object System.Collections.Generic.List[object]
+    $list = [System.Collections.Generic.List[object]]::new()
     foreach ($p in $pb.Parameters) {
         $name = $p.Name.VariablePath.UserPath
         $typeName = 'string'
@@ -424,7 +427,7 @@ function Get-TKCategoryName {
 
 function Get-TKLibraryRoots {
     # The built-in Scripts folder plus every folder under Libraries (downloaded repos).
-    $list = New-Object System.Collections.Generic.List[object]
+    $list = [System.Collections.Generic.List[object]]::new()
     $list.Add([pscustomobject]@{ Root = (Get-TKPath Scripts); Prefix = 'Scripts'; Library = '' })
     $libs = Get-TKPath Libraries
     if (Test-Path -LiteralPath $libs) {
@@ -501,7 +504,7 @@ function Get-TKScript {
                 $changes = ConvertTo-TKBool $m['Changes']
                 $remote = ($targets -contains 'Remote') -or ($targets -contains 'SSH')
 
-                $badges = New-Object System.Collections.Generic.List[string]
+                $badges = [System.Collections.Generic.List[string]]::new()
                 if ($admin) { $badges.Add('ADMIN') }
                 if ($changes) { $badges.Add('CHANGES') }
                 if ($remote) { $badges.Add('REMOTE') }
@@ -574,7 +577,7 @@ function Format-TKHeader {
         [string[]]$ParamLines = @(),
         [System.Collections.IDictionary]$Choices = @{}
     )
-    $lines = New-Object System.Collections.Generic.List[string]
+    $lines = [System.Collections.Generic.List[string]]::new()
     $keys = @($script:MetaOrder) + @($Meta.Keys | Where-Object { $script:MetaOrder -notcontains $_ })
     foreach ($k in $keys) {
         if (-not $Meta.Contains($k)) { continue }
@@ -597,7 +600,7 @@ function Set-TKScriptContent {
         [System.Collections.IDictionary]$Choices = @{}
     )
     $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
-    $out = New-Object System.Collections.Generic.List[string]
+    $out = [System.Collections.Generic.List[string]]::new()
     if ($Shebang) { $out.Add($Shebang) }
     elseif ($ext -eq '.sh') { $out.Add('#!/usr/bin/env bash') }
     elseif ($ext -eq '.py') { $out.Add('#!/usr/bin/env python3') }
@@ -635,18 +638,22 @@ function New-TKRunspace {
     Import-TKHostType
     $hostObject = New-Object TechKit.Host -ArgumentList $Sink, $HostName
     $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-    try { $iss.ExecutionPolicy = [Microsoft.PowerShell.ExecutionPolicy]::Bypass } catch { }
+    # Execution policy only exists on Windows (setting it elsewhere makes Open() fail)
+    if ([IO.Path]::DirectorySeparatorChar -eq '\') {
+        try { $iss.ExecutionPolicy = [Microsoft.PowerShell.ExecutionPolicy]::Bypass } catch { }
+    }
     $iss.ImportPSModule([string[]]@((Join-Path $PSScriptRoot 'TechKit.Core.psm1')))
     $iss.Variables.Add((New-Object System.Management.Automation.Runspaces.SessionStateVariableEntry('TKSink', $Sink, 'Tech Kit output sink')))
     $rs = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace($hostObject, $iss)
-    $rs.ApartmentState = [System.Threading.ApartmentState]::STA
+    # STA is needed on Windows for sign-in windows and dialogs; other platforms only support MTA
+    if ([IO.Path]::DirectorySeparatorChar -eq '\') { $rs.ApartmentState = [System.Threading.ApartmentState]::STA }
     $rs.ThreadOptions = [System.Management.Automation.Runspaces.PSThreadOptions]::ReuseThread
     $rs.Open()
 
     $init = [PowerShell]::Create()
     $init.Runspace = $rs
     $null = $init.AddScript({
-        $global:TKResults = New-Object System.Collections.Generic.List[object]
+        $global:TKResults = [System.Collections.Generic.List[object]]::new()
         $global:ProgressPreference = 'Continue'
         $global:ErrorActionPreference = 'Continue'
         $global:TKConnections = @{}
@@ -693,7 +700,7 @@ function Out-TKSink {
             $Width = 220
             try { $Width = [Math]::Max(80, $Host.UI.RawUI.BufferSize.Width) } catch { }
         }
-        if (-not $NoCollect) { $global:TKResults = New-Object System.Collections.Generic.List[object] }
+        if (-not $NoCollect) { $global:TKResults = [System.Collections.Generic.List[object]]::new() }
         $formatter = [scriptblock]::Create("Out-String -Stream -Width $Width").GetSteppablePipeline()
         $formatter.Begin($true)
     }
@@ -739,6 +746,13 @@ function Out-TKSink {
     }
 }
 
+function Join-TKPathSafe {
+    # Join-Path that returns $null instead of failing when the base is missing
+    param([string]$Base, [string]$Child)
+    if (-not $Base) { return $null }
+    Join-Path $Base $Child
+}
+
 function Find-TKInterpreter {
     param([ValidateSet('python', 'bash', 'ssh')][string]$Name)
     $root = $script:TKRoot
@@ -755,21 +769,27 @@ function Find-TKInterpreter {
         'bash' {
             $candidates = @(
                 (Join-Path $root 'Runtimes\git\bin\bash.exe'),
-                (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
-                $(if (${env:ProgramFiles(x86)}) { Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe' }),
-                (Join-Path $env:LOCALAPPDATA 'Programs\Git\bin\bash.exe'),
-                (Join-Path $env:WINDIR 'System32\bash.exe')
+                (Join-TKPathSafe $env:ProgramFiles 'Git\bin\bash.exe'),
+                (Join-TKPathSafe ${env:ProgramFiles(x86)} 'Git\bin\bash.exe'),
+                (Join-TKPathSafe $env:LOCALAPPDATA 'Programs\Git\bin\bash.exe'),
+                (Join-TKPathSafe $env:WINDIR 'System32\bash.exe')
             )
         }
         'ssh' {
             $candidates = @(
-                (Join-Path $env:WINDIR 'System32\OpenSSH\ssh.exe'),
+                (Join-TKPathSafe $env:WINDIR 'System32\OpenSSH\ssh.exe'),
                 (Get-Command ssh.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
             )
         }
     }
     foreach ($c in $candidates) {
         if ($c -and (Test-Path -LiteralPath $c)) { return $c }
+    }
+    # Not on Windows (used by the test suite on Linux/macOS)
+    if ([IO.Path]::DirectorySeparatorChar -eq '/') {
+        $unix = @{ python = 'python3'; bash = 'bash'; ssh = 'ssh' }[$Name]
+        $cmd = Get-Command $unix -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($cmd) { return $cmd.Source }
     }
     $null
 }
@@ -816,6 +836,7 @@ function Invoke-TKScript {
         [System.Management.Automation.PSCredential]$Credential,
         [switch]$DryRun
     )
+    if (Test-Path -LiteralPath $Path) { $Path = (Resolve-Path -LiteralPath $Path).ProviderPath }
     $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
     $localTargets = @()
     $remoteTargets = @()
@@ -836,7 +857,12 @@ function Invoke-TKScript {
                 try {
                     & $Path @p
                 } catch {
+                    # Re-emitting the error replaces its position, so keep the script line first
+                    $pos = $_.InvocationInfo
                     Write-Error -ErrorRecord $_
+                    if ($global:TKSink -and $pos -and $pos.ScriptName -eq $Path -and $pos.ScriptLineNumber -gt 0) {
+                        $global:TKSink.Add('Verbose', ('    at line {0}: {1}' -f $pos.ScriptLineNumber, $pos.Line.Trim()))
+                    }
                 }
             }
             if ($remoteTargets.Count -gt 0) {
@@ -990,7 +1016,7 @@ $body
 
 function Import-TKResult {
     param([string]$Path)
-    $global:TKResults = New-Object System.Collections.Generic.List[object]
+    $global:TKResults = [System.Collections.Generic.List[object]]::new()
     if ($Path -and (Test-Path -LiteralPath $Path)) {
         foreach ($o in (Import-Clixml -LiteralPath $Path)) { $global:TKResults.Add($o) }
     }
@@ -1100,7 +1126,7 @@ function Connect-TKM365 {
     if ($Method -eq 'Certificate' -and -not $CertificateThumbprint) {
         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath, $CertificatePassword)
     }
-    $failures = New-Object System.Collections.Generic.List[string]
+    $failures = [System.Collections.Generic.List[string]]::new()
 
     # The real cmdlets are called by module-qualified name, because the Tech Kit session
     # also has "reuse the connection" wrappers with the plain names (see Install-TKConnectShims).

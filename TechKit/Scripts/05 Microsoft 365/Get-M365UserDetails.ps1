@@ -27,7 +27,7 @@ if (-not $u) {
     $found = @(Get-MgUser -Filter "startswith(displayName,'$esc') or startswith(userPrincipalName,'$esc') or startswith(mail,'$esc')" -Property $props -Top 25 -ConsistencyLevel eventual -CountVariable userCount)
     if ($found.Count -eq 0) { throw "No user matches '$q'." }
     if ($found.Count -gt 1 -and $found.Count -le 12) {
-        $choices = New-Object 'System.Collections.ObjectModel.Collection[System.Management.Automation.Host.ChoiceDescription]'
+        $choices = [System.Collections.ObjectModel.Collection[System.Management.Automation.Host.ChoiceDescription]]::new()
         for ($i = 0; $i -lt $found.Count; $i++) {
             $hot = $(if ($i -lt 9) { '&' + ($i + 1) + ' ' } else { '' })
             $choices.Add((New-Object System.Management.Automation.Host.ChoiceDescription("$hot$($found[$i].DisplayName) <$($found[$i].UserPrincipalName)>", [string]$found[$i].UserPrincipalName)))

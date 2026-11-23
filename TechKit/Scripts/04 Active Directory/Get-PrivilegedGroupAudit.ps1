@@ -32,7 +32,7 @@ $groups = [ordered]@{
 }
 
 $now = Get-Date
-$rows = New-Object System.Collections.Generic.List[object]
+$rows = [System.Collections.Generic.List[object]]::new()
 foreach ($label in $groups.Keys) {
     $g = $null
     try { $g = Get-ADGroup -Identity $groups[$label] -ErrorAction Stop } catch { continue }

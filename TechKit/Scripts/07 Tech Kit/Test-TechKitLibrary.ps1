@@ -21,7 +21,7 @@ $root = Get-TKPath Scripts
 $files = @(Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object { $_.Extension -in @('.ps1', '.py', '.sh') })
 Write-Host "Checking $($files.Count) script(s) in $root" -ForegroundColor Cyan
 
-$results = New-Object System.Collections.Generic.List[object]
+$results = [System.Collections.Generic.List[object]]::new()
 foreach ($f in $files) {
     $rel = $f.FullName.Substring($root.Length).TrimStart('\', '/')
     $h = Read-TKHeader -Path $f.FullName

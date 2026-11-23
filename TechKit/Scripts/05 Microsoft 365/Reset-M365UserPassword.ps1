@@ -36,7 +36,7 @@ if ($NewPassword -and $NewPassword.Length -gt 0) {
 } else {
     $sets = @('ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%*?-+=')
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    $chars = New-Object System.Collections.Generic.List[char]
+    $chars = [System.Collections.Generic.List[char]]::new()
     $all = -join $sets
     for ($i = 0; $i -lt 14; $i++) {
         $set = $all

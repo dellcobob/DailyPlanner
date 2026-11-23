@@ -59,7 +59,7 @@ public static class TKDiskSize
 
 # Cloud-only placeholders (OneDrive "online-only") carry these attributes
 $cloudMask = 0x400000 -bor 0x40000 -bor 0x1000
-$results = New-Object System.Collections.Generic.List[object]
+$results = [System.Collections.Generic.List[object]]::new()
 
 function Measure-Folder {
     param([System.IO.DirectoryInfo]$Dir, [int]$Level)

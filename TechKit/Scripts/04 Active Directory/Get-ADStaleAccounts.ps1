@@ -27,7 +27,7 @@ if ($IncludeDisabled) { $filter = '*' }
 $common = @{ Filter = $filter; ErrorAction = 'Stop' }
 if ($SearchBase) { $common.SearchBase = $SearchBase }
 
-$out = New-Object System.Collections.Generic.List[object]
+$out = [System.Collections.Generic.List[object]]::new()
 if ($Type -in @('Both', 'Users')) {
     Get-ADUser @common -Properties LastLogonDate, whenCreated, PasswordLastSet, Description | ForEach-Object {
         $last = $_.LastLogonDate

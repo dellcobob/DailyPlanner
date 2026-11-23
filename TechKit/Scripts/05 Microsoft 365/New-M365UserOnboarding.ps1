@@ -85,7 +85,7 @@ if (-not $Title) { $Title = [string]$dept.Title }
 # Licenses: part numbers -> SKU ids, with a free-seat check
 $skus = @{}
 Get-MgSubscribedSku -All | ForEach-Object { $skus[$_.SkuPartNumber] = $_ }
-$licenseIds = New-Object System.Collections.Generic.List[string]
+$licenseIds = [System.Collections.Generic.List[string]]::new()
 foreach ($l in @($rules.Cloud.Licenses) + @($dept.Licenses)) {
     if (-not $l) { continue }
     $sku = $skus[$l]
@@ -95,9 +95,9 @@ foreach ($l in @($rules.Cloud.Licenses) + @($dept.Licenses)) {
     if (-not $licenseIds.Contains([string]$sku.SkuId)) { $licenseIds.Add([string]$sku.SkuId) }
 }
 
-$groupNames = New-Object System.Collections.Generic.List[string]
+$groupNames = [System.Collections.Generic.List[string]]::new()
 foreach ($g in @($rules.Cloud.Groups) + @($dept.CloudGroups) + @($dept.SharePointSites)) { if ($g -and -not $groupNames.Contains($g)) { $groupNames.Add($g) } }
-$dls = New-Object System.Collections.Generic.List[string]
+$dls = [System.Collections.Generic.List[string]]::new()
 foreach ($d in @($rules.Cloud.DistributionLists) + @($dept.DistributionLists)) { if ($d -and -not $dls.Contains($d)) { $dls.Add($d) } }
 if ($CopyGroupsFrom) {
     $src = Get-MgUser -UserId $CopyGroupsFrom -ErrorAction Stop
@@ -123,7 +123,7 @@ else {
     $plain = ([Convert]::ToBase64String($bytes) -replace '[+/=]', 'x') + 'K7!'
 }
 
-$log = New-Object System.Collections.Generic.List[object]
+$log = [System.Collections.Generic.List[object]]::new()
 function Add-Step { param([string]$Step, [string]$Result) $log.Add([pscustomobject]@{ User = $upn; Step = $Step; Result = $Result }) }
 
 $user = $null

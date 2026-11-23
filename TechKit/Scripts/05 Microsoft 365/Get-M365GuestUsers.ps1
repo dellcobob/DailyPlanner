@@ -37,8 +37,8 @@ $rows = foreach ($g in $guests) {
     if ($hasSignIn -and $g.SignInActivity) { $last = $g.SignInActivity.LastSignInDateTime }
     $idle = $null
     if ($last) { $idle = [int]($now - [datetime]$last).TotalDays }
-    if ($OlderThanDays -gt 0 -and $age -ne $null -and $age -lt $OlderThanDays) { continue }
-    if ($InactiveDays -gt 0 -and $hasSignIn -and $idle -ne $null -and $idle -lt $InactiveDays) { continue }
+    if ($OlderThanDays -gt 0 -and $null -ne $age -and $age -lt $OlderThanDays) { continue }
+    if ($InactiveDays -gt 0 -and $hasSignIn -and $null -ne $idle -and $idle -lt $InactiveDays) { continue }
     $domain = ''
     if ($g.Mail -match '@(.+)$') { $domain = $Matches[1] }
     [pscustomobject]@{

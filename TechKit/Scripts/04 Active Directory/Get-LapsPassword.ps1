@@ -48,9 +48,9 @@ foreach ($c in $Computer) {
         foreach ($prop in @('name', 'ms-mcs-admpwd', 'ms-mcs-admpwdexpirationtime', 'mslaps-passwordexpirationtime')) { $null = $searcher.PropertiesToLoad.Add($prop) }
         $hit = $searcher.FindOne()
         if (-not $hit) { Write-Host "$name : not found in Active Directory." -ForegroundColor Red; continue }
-        $pwd = [string]($hit.Properties['ms-mcs-admpwd'] | Select-Object -First 1)
+        $adminPassword = [string]($hit.Properties['ms-mcs-admpwd'] | Select-Object -First 1)
         $exp = $hit.Properties['ms-mcs-admpwdexpirationtime'] | Select-Object -First 1
-        if (-not $pwd) {
+        if (-not $adminPassword) {
             $winExp = $hit.Properties['mslaps-passwordexpirationtime'] | Select-Object -First 1
             if ($winExp) { Write-Host "$name : uses Windows LAPS but the password could not be read (rights, or the LAPS PowerShell module is missing on this PC; try targeting a DC)." -ForegroundColor Yellow }
             else { Write-Host "$name : no LAPS password in AD (LAPS not applied, or you lack read rights)." -ForegroundColor Yellow }
@@ -59,7 +59,7 @@ foreach ($c in $Computer) {
         [pscustomobject]@{
             Computer = [string]($hit.Properties['name'] | Select-Object -First 1)
             Account  = '(local admin)'
-            Password = $pwd
+            Password = $adminPassword
             Updated  = $null
             Expires  = $(if ($exp) { [datetime]::FromFileTime([int64]$exp) } else { $null })
             Source   = 'Legacy Microsoft LAPS'

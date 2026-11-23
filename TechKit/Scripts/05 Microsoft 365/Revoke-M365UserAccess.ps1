@@ -26,7 +26,7 @@ param(
 
 if (-not (Get-MgContext)) { throw 'Not connected to Microsoft Graph. Click the Microsoft 365 button in Tech Kit first.' }
 $u = Get-MgUser -UserId $User.Trim() -Property 'id,displayName,userPrincipalName,accountEnabled,onPremisesSyncEnabled' -ErrorAction Stop
-$log = New-Object System.Collections.Generic.List[object]
+$log = [System.Collections.Generic.List[object]]::new()
 function Add-Log { param([string]$Step, [string]$Result) $log.Add([pscustomobject]@{ User = $u.UserPrincipalName; Step = $Step; Result = $Result; Time = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }) }
 
 Write-Host "Securing $($u.DisplayName) <$($u.UserPrincipalName)>" -ForegroundColor Cyan

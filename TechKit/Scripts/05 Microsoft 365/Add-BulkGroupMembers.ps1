@@ -27,7 +27,7 @@ param(
 )
 
 if (-not (Get-MgContext)) { throw 'Not connected to Microsoft Graph. Click the Microsoft 365 button in Tech Kit first.' }
-$list = New-Object System.Collections.Generic.List[string]
+$list = [System.Collections.Generic.List[string]]::new()
 foreach ($x in $Users) { foreach ($y in ($x -split '[,;\s]+')) { if ($y.Trim()) { $list.Add($y.Trim()) } } }
 if ($CsvPath) {
     $rows = @(Import-Csv -LiteralPath $CsvPath)

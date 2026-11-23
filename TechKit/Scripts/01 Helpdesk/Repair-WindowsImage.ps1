@@ -17,7 +17,7 @@ param(
 function Invoke-Native {
     # Streams the tool's output live and records the lines and exit code.
     param([string]$Exe, [string[]]$Arguments, [switch]$Unicode)
-    $script:NativeLines = New-Object System.Collections.Generic.List[string]
+    $script:NativeLines = [System.Collections.Generic.List[string]]::new()
     $old = $null
     if ($Unicode) {
         try { $old = [Console]::OutputEncoding; [Console]::OutputEncoding = [System.Text.Encoding]::Unicode } catch { }

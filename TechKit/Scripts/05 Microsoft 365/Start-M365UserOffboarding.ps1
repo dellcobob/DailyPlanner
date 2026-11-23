@@ -54,7 +54,7 @@ if ($RulesProfile) {
 
 $u = Get-MgUser -UserId $User.Trim() -Property 'id,displayName,userPrincipalName,mail,accountEnabled,onPremisesSyncEnabled,assignedLicenses,companyName' -ErrorAction Stop
 if (-not $company) { $company = [string]$u.CompanyName }
-$log = New-Object System.Collections.Generic.List[object]
+$log = [System.Collections.Generic.List[object]]::new()
 function Add-Step { param([string]$Step, [string]$Result) $log.Add([pscustomobject]@{ User = $u.UserPrincipalName; Time = (Get-Date).ToString('yyyy-MM-dd HH:mm'); Step = $Step; Result = $Result }) }
 function Invoke-Step {
     param([string]$Step, [scriptblock]$Action)

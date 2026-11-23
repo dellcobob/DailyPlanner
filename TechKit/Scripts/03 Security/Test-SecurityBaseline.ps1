@@ -8,7 +8,7 @@
 [CmdletBinding()]
 param()
 
-$results = New-Object System.Collections.Generic.List[object]
+$results = [System.Collections.Generic.List[object]]::new()
 function Add-Result {
     param([string]$Check, [string]$Result, [string]$Detail, [string]$Fix = '')
     $color = switch ($Result) { 'PASS' { 'Green' } 'WARN' { 'Yellow' } 'FAIL' { 'Red' } default { 'Gray' } }

@@ -50,12 +50,12 @@ $rows = foreach ($m in $mbs) {
         DisplayName = $m.DisplayName
         UPN         = $m.UserPrincipalName
         Type        = [string]$m.RecipientTypeDetails
-        SizeGB      = $(if ($bytes -ne $null) { [Math]::Round($bytes / 1GB, 2) } else { $null })
+        SizeGB      = $(if ($null -ne $bytes) { [Math]::Round($bytes / 1GB, 2) } else { $null })
         Items       = $(if ($st) { $st.ItemCount } else { $null })
         QuotaGB     = $(if ($quota) { [Math]::Round($quota / 1GB, 1) } else { $null })
         PercentUsed = $pct
         LastLogon   = $(if ($st) { $st.LastLogonTime } else { $null })
-        ArchiveGB   = $(if ($archive -ne $null) { [Math]::Round($archive / 1GB, 2) } else { $null })
+        ArchiveGB   = $(if ($null -ne $archive) { [Math]::Round($archive / 1GB, 2) } else { $null })
     }
 }
 Write-Progress -Activity 'Mailbox statistics' -Completed

@@ -79,7 +79,7 @@ function New-Password {
     param([int]$Length = 16)
     $sets = @('ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%*?-+=')
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    $chars = New-Object System.Collections.Generic.List[char]
+    $chars = [System.Collections.Generic.List[char]]::new()
     $all = -join $sets
     for ($i = 0; $i -lt $Length; $i++) {
         $set = $all
@@ -121,7 +121,7 @@ $ou = $dept.OU
 if (-not $ou) { $ou = $rules.AD.DefaultOU }
 try { $null = Get-ADOrganizationalUnit -Identity $ou -ErrorAction Stop } catch { throw "OU not found: $ou (check $RulesProfile.json)" }
 
-$groups = New-Object System.Collections.Generic.List[string]
+$groups = [System.Collections.Generic.List[string]]::new()
 foreach ($g in @($rules.AD.Groups) + @($dept.ADGroups)) { if ($g -and -not $groups.Contains($g)) { $groups.Add($g) } }
 if ($CopyGroupsFrom) {
     $src = Get-ADUser -Identity $CopyGroupsFrom -Properties MemberOf -ErrorAction Stop
@@ -177,7 +177,7 @@ if ($EmployeeId) { $newParams.EmployeeID = $EmployeeId }
 if ($managerObj) { $newParams.Manager = $managerObj.DistinguishedName }
 if ($AccountExpires) { $newParams.AccountExpirationDate = [datetime]$AccountExpires }
 
-$log = New-Object System.Collections.Generic.List[object]
+$log = [System.Collections.Generic.List[object]]::new()
 function Add-Step { param([string]$Step, [string]$Result) $log.Add([pscustomobject]@{ User = $sam; Step = $Step; Result = $Result }) }
 
 if ($PSCmdlet.ShouldProcess("$display ($sam) in $ou", 'Create AD user')) {

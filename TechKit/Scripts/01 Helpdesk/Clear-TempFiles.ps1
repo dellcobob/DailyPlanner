@@ -18,7 +18,7 @@ param(
 )
 
 $cutoff = (Get-Date).AddDays(-$OlderThanDays)
-$folders = New-Object System.Collections.Generic.List[string]
+$folders = [System.Collections.Generic.List[string]]::new()
 $folders.Add((Join-Path $env:SystemRoot 'Temp'))
 
 $profiles = Get-ChildItem -Path (Join-Path $env:SystemDrive 'Users') -Directory -ErrorAction SilentlyContinue |

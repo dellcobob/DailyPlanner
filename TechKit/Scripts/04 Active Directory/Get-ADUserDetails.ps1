@@ -33,7 +33,7 @@ if (-not $users.Count) { throw "No user matches '$id'." }
 
 if ($users.Count -gt 1 -and $users.Count -le 12) {
     # Let the technician pick one (a dialog in Tech Kit, a numbered menu in a console)
-    $choices = New-Object 'System.Collections.ObjectModel.Collection[System.Management.Automation.Host.ChoiceDescription]'
+    $choices = [System.Collections.ObjectModel.Collection[System.Management.Automation.Host.ChoiceDescription]]::new()
     for ($i = 0; $i -lt $users.Count; $i++) {
         $hot = $(if ($i -lt 9) { '&' + ($i + 1) + ' ' } else { '' })
         $label = "$hot$($users[$i].Name) ($($users[$i].SamAccountName))"

@@ -31,7 +31,7 @@ function New-StrongPassword {
         $rng.GetBytes($b)
         $Set[[BitConverter]::ToUInt32($b, 0) % $Set.Length]
     }
-    $chars = New-Object System.Collections.Generic.List[char]
+    $chars = [System.Collections.Generic.List[char]]::new()
     foreach ($s in $sets) { $chars.Add((& $pick $s)) }
     $all = -join $sets
     while ($chars.Count -lt $Length) { $chars.Add((& $pick $all)) }

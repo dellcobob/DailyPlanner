@@ -90,8 +90,8 @@ function Get-Rows {
 $rootRows = @(Get-Rows -Folder $root -Scope 'Root')
 Write-Host "Root: $root  ($($rootRows.Count) entries, owner $(($rootRows | Select-Object -First 1).Owner))" -ForegroundColor Cyan
 
-$subRows = New-Object System.Collections.Generic.List[object]
-$queue = New-Object System.Collections.Generic.Queue[object]
+$subRows = [System.Collections.Generic.List[object]]::new()
+$queue = [System.Collections.Generic.Queue[object]]::new()
 $queue.Enqueue(@($root, 0))
 $checked = 0
 while ($queue.Count) {

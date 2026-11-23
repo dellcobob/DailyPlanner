@@ -36,11 +36,11 @@ $ipValue = ConvertTo-UInt32 $Matches[1]
 $mask = [uint32]([Math]::Pow(2, 32) - [Math]::Pow(2, 32 - $prefix))
 $network = $ipValue -band $mask
 $broadcast = $network + [uint32]([Math]::Pow(2, 32 - $prefix) - 1)
-$targets = New-Object System.Collections.Generic.List[string]
+$targets = [System.Collections.Generic.List[string]]::new()
 for ($v = $network + 1; $v -lt $broadcast; $v++) { $targets.Add((ConvertTo-IpString ([uint32]$v))) }
 Write-Host "Scanning $($targets.Count) addresses in $(ConvertTo-IpString $network)/$prefix ..." -ForegroundColor Cyan
 
-$alive = New-Object System.Collections.Generic.List[object]
+$alive = [System.Collections.Generic.List[object]]::new()
 $batchSize = 256
 for ($i = 0; $i -lt $targets.Count; $i += $batchSize) {
     $batch = $targets.GetRange($i, [Math]::Min($batchSize, $targets.Count - $i))

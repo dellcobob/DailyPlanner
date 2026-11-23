@@ -35,7 +35,7 @@ if ($FindSource) {
             $d = @{}
             foreach ($n in $x.Event.EventData.Data) { $d[$n.Name] = [string]$n.'#text' }
             $user = $d['TargetUserName']
-            if (-not $sources.ContainsKey($user)) { $sources[$user] = New-Object System.Collections.Generic.List[string] }
+            if (-not $sources.ContainsKey($user)) { $sources[$user] = [System.Collections.Generic.List[string]]::new() }
             $entry = "$($d['TargetDomainName']) @ $($e.TimeCreated.ToString('MM-dd HH:mm'))"
             if (-not $sources[$user].Contains($entry)) { $sources[$user].Add($entry) }
         }

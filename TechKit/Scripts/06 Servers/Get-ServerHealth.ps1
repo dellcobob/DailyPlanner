@@ -14,7 +14,7 @@ param(
 
 # A hashtable keeps the state shared with Set-Status whether this runs locally or over remoting
 $state = @{ Status = 'OK' }
-$notes = New-Object System.Collections.Generic.List[string]
+$notes = [System.Collections.Generic.List[string]]::new()
 function Set-Status {
     param([string]$Level, [string]$Note)
     $notes.Add($Note)

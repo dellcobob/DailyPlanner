@@ -56,9 +56,9 @@ $exoAppId = '00000002-0000-0ff1-ce00-000000000000'
 $spoAppId = '00000003-0000-0ff1-ce00-000000000000'
 $graphSp = Get-MgServicePrincipal -Filter "appId eq '$graphAppId'" -ErrorAction Stop
 
-$access = New-Object System.Collections.Generic.List[object]
-$graphRoles = New-Object System.Collections.Generic.List[object]
-$graphAccess = New-Object System.Collections.Generic.List[object]
+$access = [System.Collections.Generic.List[object]]::new()
+$graphRoles = [System.Collections.Generic.List[object]]::new()
+$graphAccess = [System.Collections.Generic.List[object]]::new()
 foreach ($perm in ($GraphPermissions | ForEach-Object { $_ -split '[,;\s]+' } | Where-Object { $_ } | Select-Object -Unique)) {
     $role = $graphSp.AppRoles | Where-Object { $_.Value -eq $perm -and $_.AllowedMemberTypes -contains 'Application' } | Select-Object -First 1
     if (-not $role) { Write-Host "Unknown Graph application permission '$perm', skipped." -ForegroundColor Yellow; continue }
@@ -139,7 +139,7 @@ Start-Sleep -Seconds 5
 $sp = New-MgServicePrincipal -AppId $app.AppId -ErrorAction Stop
 Start-Sleep -Seconds 5
 
-$results = New-Object System.Collections.Generic.List[object]
+$results = [System.Collections.Generic.List[object]]::new()
 foreach ($r in $graphRoles) {
     try {
         $null = New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -PrincipalId $sp.Id -ResourceId $graphSp.Id -AppRoleId $r.Id -ErrorAction Stop

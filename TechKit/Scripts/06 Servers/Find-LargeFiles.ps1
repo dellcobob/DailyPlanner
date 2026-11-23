@@ -21,7 +21,7 @@ param(
 if (-not (Test-Path -LiteralPath $Path)) { throw "Path not found: $Path" }
 $root = (Resolve-Path -LiteralPath $Path).Path
 $min = [int64]$MinSizeMB * 1MB
-$big = New-Object System.Collections.Generic.List[object]
+$big = [System.Collections.Generic.List[object]]::new()
 $folderTotals = @{}
 
 $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue | Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) })
@@ -34,7 +34,7 @@ foreach ($dir in $dirs) {
     $n++
     Write-Progress -Activity "Scanning $root" -Status $dir.Name -PercentComplete ([int](100 * $n / [Math]::Max(1, $dirs.Count)))
     $sum = [int64]0
-    $stack = New-Object System.Collections.Generic.Stack[string]
+    $stack = [System.Collections.Generic.Stack[string]]::new()
     $stack.Push($dir.FullName)
     while ($stack.Count) {
         $current = $stack.Pop()

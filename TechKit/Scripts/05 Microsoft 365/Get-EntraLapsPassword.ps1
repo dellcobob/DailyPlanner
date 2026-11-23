@@ -34,11 +34,11 @@ foreach ($raw in $Device) {
             $creds = @($detail.credentials | Sort-Object { [datetime]$_.backupDateTime } -Descending)
             if (-not $IncludeHistory) { $creds = @($creds | Select-Object -First 1) }
             foreach ($c in $creds) {
-                $pwd = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([string]$c.passwordBase64))
+                $adminPassword = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([string]$c.passwordBase64))
                 [pscustomobject]@{
                     Device     = $it.deviceName
                     Account    = $c.accountName
-                    Password   = $pwd
+                    Password   = $adminPassword
                     BackedUp   = $c.backupDateTime
                     Rotates    = $it.refreshDateTime
                     DeviceId   = $it.id

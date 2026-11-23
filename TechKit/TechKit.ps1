@@ -74,7 +74,7 @@ $script:Selected = $null
 $script:Job = $null
 $script:RunAsCred = $null
 $script:ParamControls = [ordered]@{}
-$script:History = New-Object System.Collections.Generic.List[string]
+$script:History = [System.Collections.Generic.List[string]]::new()
 $script:HistoryIndex = -1
 $script:Completion = $null
 $script:LastRun = $null
@@ -260,7 +260,7 @@ function Add-TKLink {
     $link.Foreground = $script:KindBrush.Info
     $link.Tag = $Target
     $link.Cursor = [System.Windows.Input.Cursors]::Hand
-    $link.Add_Click({ param($sender, $e) try { Start-Process -FilePath ([string]$sender.Tag) } catch { } })
+    $link.Add_Click({ param($src, $e) try { Start-Process -FilePath ([string]$src.Tag) } catch { } })
     $Box.Para.Inlines.Add($link)
     $Box.Para.Inlines.Add((New-Object System.Windows.Documents.LineBreak))
     $Box.Lines++
@@ -423,16 +423,16 @@ function Show-TKDialog {
         $null = $panel.Children.Add($det)
     }
 
-    $txt = $null; $pwd = $null; $usr = $null
+    $txt = $null; $passBox = $null; $usr = $null
     if ($InputKind -eq 'Text') {
         $txt = New-Object System.Windows.Controls.TextBox
         $txt.Text = $InputDefault
         $txt.Margin = New-TKThickness 0 12 0 0
         $null = $panel.Children.Add($txt)
     } elseif ($InputKind -eq 'Password') {
-        $pwd = New-Object System.Windows.Controls.PasswordBox
-        $pwd.Margin = New-TKThickness 0 12 0 0
-        $null = $panel.Children.Add($pwd)
+        $passBox = New-Object System.Windows.Controls.PasswordBox
+        $passBox.Margin = New-TKThickness 0 12 0 0
+        $null = $panel.Children.Add($passBox)
     } elseif ($InputKind -eq 'Credential') {
         $l1 = New-Object System.Windows.Controls.TextBlock
         $l1.Text = 'User name  (DOMAIN\user or user@domain)'
@@ -445,8 +445,8 @@ function Show-TKDialog {
         $l2.Text = 'Password'
         $l2.Margin = New-TKThickness 0 10 0 4
         $null = $panel.Children.Add($l2)
-        $pwd = New-Object System.Windows.Controls.PasswordBox
-        $null = $panel.Children.Add($pwd)
+        $passBox = New-Object System.Windows.Controls.PasswordBox
+        $null = $panel.Children.Add($passBox)
     }
 
     $row = New-Object System.Windows.Controls.WrapPanel
@@ -465,9 +465,9 @@ function Show-TKDialog {
         }
         if ($Buttons[$i] -in @('Cancel', 'No', 'Close')) { $b.IsCancel = $true }
         $b.Add_Click({
-            param($sender, $e)
-            $win = [System.Windows.Window]::GetWindow($sender)
-            $win.Tag = [string]$sender.Tag
+            param($src, $e)
+            $win = [System.Windows.Window]::GetWindow($src)
+            $win.Tag = [string]$src.Tag
             $win.Close()
         })
         $null = $row.Children.Add($b)
@@ -475,9 +475,9 @@ function Show-TKDialog {
     $null = $panel.Children.Add($row)
     $w.Content = $panel
     $w.Add_ContentRendered({
-        param($sender, $e)
+        param($src, $e)
         $first = $null
-        foreach ($c in $sender.Content.Children) {
+        foreach ($c in $src.Content.Children) {
             if ($c -is [System.Windows.Controls.TextBox] -and -not $c.IsReadOnly) { $first = $c; break }
             if ($c -is [System.Windows.Controls.PasswordBox]) { $first = $c; break }
         }
@@ -487,11 +487,11 @@ function Show-TKDialog {
 
     $result = @{ Button = $w.Tag; Text = $null; Secure = $null; Credential = $null; UserName = $null }
     if ($txt) { $result.Text = $txt.Text }
-    if ($pwd) { $result.Secure = $pwd.SecurePassword }
+    if ($passBox) { $result.Secure = $passBox.SecurePassword }
     if ($usr) {
         $result.UserName = $usr.Text.Trim()
         if ($result.UserName) {
-            $result.Credential = New-Object System.Management.Automation.PSCredential($result.UserName, $pwd.SecurePassword)
+            $result.Credential = New-Object System.Management.Automation.PSCredential($result.UserName, $passBox.SecurePassword)
         }
     }
     $result
@@ -719,7 +719,7 @@ function Start-TKElevatedRun {
 function Read-TKElevatedOutput {
     param($Job)
     if (-not $Job -or -not (Test-Path -LiteralPath $Job.OutFile)) { return }
-    $items = New-Object System.Collections.Generic.List[object]
+    $items = [System.Collections.Generic.List[object]]::new()
     $fs = $null
     try {
         $fs = [IO.File]::Open($Job.OutFile, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
@@ -796,7 +796,7 @@ function Import-TKLibrary {
     # The active role decides which scripts are visible
     $script:Visible = @($script:Scripts | Where-Object { Test-TKRoleAllows $script:Role $_ })
     $favs = @($script:Settings.Favorites)
-    $cats = New-Object System.Collections.ObjectModel.ObservableCollection[object]
+    $cats = [System.Collections.ObjectModel.ObservableCollection[object]]::new()
     if ($favs.Count -gt 0) {
         $n = @($script:Visible | Where-Object { $favs -contains $_.Id }).Count
         $cats.Add([pscustomobject]@{ Label = [string][char]0x2605 + '  Favorites'; Count = $n; Key = 'fav' })
@@ -837,7 +837,7 @@ function Update-TKScriptList {
         }
         $header = "SEARCH: $($ui.TxtSearch.Text.Trim())"
     }
-    $items = New-Object System.Collections.ObjectModel.ObservableCollection[object]
+    $items = [System.Collections.ObjectModel.ObservableCollection[object]]::new()
     $selectItem = $null
     foreach ($s in $list) {
         $star = ''
@@ -856,7 +856,7 @@ function Update-TKScriptList {
 
 function Get-TKFriendlyBadges {
     param($S)
-    $b = New-Object System.Collections.Generic.List[string]
+    $b = [System.Collections.Generic.List[string]]::new()
     $b.Add($S.Language)
     if ($S.Admin) { $b.Add('Needs admin') }
     if ($S.Changes) { $b.Add('Makes changes') } else { $b.Add('Read-only') }
@@ -884,7 +884,7 @@ function Show-TKScriptDetails {
     $ui.TxtName.Text = $S.Name
     $ui.IcBadges.ItemsSource = @(Get-TKFriendlyBadges $S)
     $ui.TxtDesc.Text = $S.Description
-    $meta = New-Object System.Collections.Generic.List[string]
+    $meta = [System.Collections.Generic.List[string]]::new()
     $meta.Add("File: $($S.RelPath)")
     if ($S.IsLibrary -and -not $S.HasHeader) { $meta.Add('Library script without a Tech Kit header: flags are guessed from the code') }
     if ($S.Modules.Count) { $meta.Add('Modules: ' + ($S.Modules -join ', ')) }
@@ -893,7 +893,7 @@ function Show-TKScriptDetails {
     if ($S.Version) { $meta.Add('Version: ' + $S.Version) }
     $ui.TxtMeta.Text = $meta -join '   |   '
 
-    $warn = New-Object System.Collections.Generic.List[string]
+    $warn = [System.Collections.Generic.List[string]]::new()
     if ($S.ParseErrors.Count) { $warn.Add('This script has syntax errors and cannot run: ' + ($S.ParseErrors -join '; ')) }
     if ($S.Admin -and -not $script:IsAdmin) { $warn.Add('Needs admin: Tech Kit will ask for administrator approval (UAC) when it runs on this PC.') }
     if ($S.Language -eq 'Python' -and -not (Find-TKInterpreter -Name python)) { $warn.Add('Python was not found on this PC or in Runtimes\python.') }
@@ -1033,9 +1033,9 @@ function New-TKParamControls {
 function Get-TKParamValues {
     param($S)
     $values = @{}
-    $cliArgs = New-Object System.Collections.Generic.List[string]
-    $summary = New-Object System.Collections.Generic.List[string]
-    $problems = New-Object System.Collections.Generic.List[string]
+    $cliArgs = [System.Collections.Generic.List[string]]::new()
+    $summary = [System.Collections.Generic.List[string]]::new()
+    $problems = [System.Collections.Generic.List[string]]::new()
     foreach ($name in $script:ParamControls.Keys) {
         $entry = $script:ParamControls[$name]
         $p = $entry.Def
@@ -1192,8 +1192,8 @@ function Show-TKConnectDialog {
     $d.Window.Tag = $d
 
     $refresh = {
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         if (-not $dd) { return }
         $app = $dd.RbCert.IsChecked -or $dd.RbSecret.IsChecked
         $dd.PnlApp.Visibility = $(if ($app -or $dd.ChkSharePoint.IsChecked) { 'Visible' } else { 'Collapsed' })
@@ -1209,9 +1209,9 @@ function Show-TKConnectDialog {
     if ($d.ChkSharePoint.IsChecked) { $d.PnlSpo.Visibility = 'Visible'; $d.PnlApp.Visibility = 'Visible' }
 
     $d.CmbProfile.Add_SelectionChanged({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
-        $name = [string]$sender.SelectedItem
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
+        $name = [string]$src.SelectedItem
         $p = @(Get-TKTenantProfiles) | Where-Object { $_.Name -eq $name } | Select-Object -First 1
         if (-not $p) { return }
         $dd.TxtProfileName.Text = $p.Name
@@ -1241,8 +1241,8 @@ function Show-TKConnectDialog {
     })
 
     $d.BtnBrowsePfx.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         $ofd = New-Object Microsoft.Win32.OpenFileDialog
         $ofd.Filter = 'Certificate (*.pfx;*.p12)|*.pfx;*.p12|All files (*.*)|*.*'
         $certs = Get-TKPath Certs
@@ -1251,8 +1251,8 @@ function Show-TKConnectDialog {
     })
 
     $d.BtnSaveProfile.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         $name = $dd.TxtProfileName.Text.Trim()
         if (-not $name) { $name = $dd.TxtTenant.Text.Trim() }
         if (-not $name) { Show-TKMessage 'Type a profile name (for example the client name) first.'; return }
@@ -1276,8 +1276,8 @@ function Show-TKConnectDialog {
     })
 
     $d.BtnDeleteProfile.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         $name = [string]$dd.CmbProfile.SelectedItem
         if (-not $name -or $dd.CmbProfile.SelectedIndex -eq 0) { return }
         Save-TKTenantProfiles -Profiles @(Get-TKTenantProfiles | Where-Object { $_.Name -ne $name })
@@ -1286,14 +1286,14 @@ function Show-TKConnectDialog {
     })
 
     $d.BtnDisconnect.Add_Click({
-        param($sender, $e)
-        $w = [System.Windows.Window]::GetWindow($sender)
+        param($src, $e)
+        $w = [System.Windows.Window]::GetWindow($src)
         $w.Tag.Result = 'disconnect'
         $w.Close()
     })
     $d.BtnConnect.Add_Click({
-        param($sender, $e)
-        $w = [System.Windows.Window]::GetWindow($sender)
+        param($src, $e)
+        $w = [System.Windows.Window]::GetWindow($src)
         $w.Tag.Result = 'connect'
         $w.Close()
     })
@@ -1638,7 +1638,7 @@ function Show-TKConsoleMenu {
         $mi = New-Object System.Windows.Controls.MenuItem
         $mi.Header = $en.Label
         $mi.Tag = $en
-        $mi.Add_Click({ param($sender, $e) Open-TKConsole -Exe $sender.Tag.Exe -Admin:([bool]$sender.Tag.Admin) })
+        $mi.Add_Click({ param($src, $e) Open-TKConsole -Exe $src.Tag.Exe -Admin:([bool]$src.Tag.Admin) })
         $null = $menu.Items.Add($mi)
     }
     $menu.PlacementTarget = $Anchor
@@ -1790,7 +1790,7 @@ function Set-TKActiveRole {
 function Switch-TKFavorite {
     $s = $script:Selected
     if (-not $s) { return }
-    $favs = New-Object System.Collections.Generic.List[string]
+    $favs = [System.Collections.Generic.List[string]]::new()
     foreach ($f in @($script:Settings.Favorites)) { if ($f) { $favs.Add([string]$f) } }
     if ($favs.Contains($s.Id)) { $null = $favs.Remove($s.Id) } else { $favs.Add($s.Id) }
     $script:Settings.Favorites = $favs.ToArray()
@@ -1854,9 +1854,9 @@ function Show-TKSettingsDialog {
             $null = $pair.Grid.Children.Add($row)
             $d.Boxes[$key] = @{ Swatch = $sw; Text = $tb }
             $sw.Add_Click({
-                param($sender, $e)
-                $dd = [System.Windows.Window]::GetWindow($sender).Tag
-                $k = [string]$sender.Tag
+                param($src, $e)
+                $dd = [System.Windows.Window]::GetWindow($src).Tag
+                $k = [string]$src.Tag
                 $cd = New-Object System.Windows.Forms.ColorDialog
                 $cd.FullOpen = $true
                 try { $cd.Color = [System.Drawing.ColorTranslator]::FromHtml($dd.Colors[$k]) } catch { }
@@ -1865,11 +1865,11 @@ function Show-TKSettingsDialog {
                 }
             })
             $tb.Add_TextChanged({
-                param($sender, $e)
-                $dd = [System.Windows.Window]::GetWindow($sender).Tag
+                param($src, $e)
+                $dd = [System.Windows.Window]::GetWindow($src).Tag
                 if (-not $dd) { return }
-                $k = [string]$sender.Tag
-                $t = $sender.Text.Trim()
+                $k = [string]$src.Tag
+                $t = $src.Text.Trim()
                 if ($t -match '^#[0-9A-Fa-f]{6}$') {
                     $dd.Colors[$k] = $t
                     Update-TKSettingsPreview $dd
@@ -1901,9 +1901,9 @@ function Show-TKSettingsDialog {
     $d.CmbRole.SelectedItem = $script:RoleName
     $d.TxtRoleInfo.Text = [string]$d.RoleConfig.Roles[$script:RoleName]['Description']
     $d.CmbRole.Add_SelectionChanged({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
-        if ($dd) { $dd.TxtRoleInfo.Text = [string]$dd.RoleConfig.Roles[[string]$sender.SelectedItem]['Description'] }
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
+        if ($dd) { $dd.TxtRoleInfo.Text = [string]$dd.RoleConfig.Roles[[string]$src.SelectedItem]['Description'] }
     })
     if ($script:RoleName -ne 'Administrator' -and $script:Settings.RolePinHash) {
         $d.ChkConfirm.IsEnabled = $false
@@ -1912,31 +1912,31 @@ function Show-TKSettingsDialog {
     Update-TKSettingsPreview $d
 
     $d.CmbPreset.Add_SelectionChanged({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
-        $preset = $dd.Themes[[string]$sender.SelectedItem]
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
+        $preset = $dd.Themes[[string]$src.SelectedItem]
         if (-not $preset) { return }
         foreach ($k in @($dd.Boxes.Keys)) { if ($preset[$k]) { $dd.Boxes[$k].Text.Text = [string]$preset[$k] } }
     })
     $d.BtnResetColors.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         $preset = $dd.Themes[[string]$dd.CmbPreset.SelectedItem]
         if (-not $preset) { return }
         foreach ($k in @($dd.Boxes.Keys)) { if ($preset[$k]) { $dd.Boxes[$k].Text.Text = [string]$preset[$k] } }
     })
-    $d.CmbFont.Add_SelectionChanged({ param($sender, $e) $dd = [System.Windows.Window]::GetWindow($sender).Tag; if ($dd) { Update-TKSettingsPreview $dd } })
-    $d.SldSize.Add_ValueChanged({ param($sender, $e) $dd = [System.Windows.Window]::GetWindow($sender).Tag; if ($dd) { $dd.TxtSize.Text = "$([int]$sender.Value) pt"; Update-TKSettingsPreview $dd } })
+    $d.CmbFont.Add_SelectionChanged({ param($src, $e) $dd = [System.Windows.Window]::GetWindow($src).Tag; if ($dd) { Update-TKSettingsPreview $dd } })
+    $d.SldSize.Add_ValueChanged({ param($src, $e) $dd = [System.Windows.Window]::GetWindow($src).Tag; if ($dd) { $dd.TxtSize.Text = "$([int]$src.Value) pt"; Update-TKSettingsPreview $dd } })
     $d.BtnBrowseReports.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         $fb = New-Object System.Windows.Forms.FolderBrowserDialog
         $fb.Description = 'Folder for CSV and HTML exports'
         if ($fb.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $dd.TxtReports.Text = $fb.SelectedPath }
     })
     $d.BtnSave.Add_Click({
-        param($sender, $e)
-        $w = [System.Windows.Window]::GetWindow($sender)
+        param($src, $e)
+        $w = [System.Windows.Window]::GetWindow($src)
         $w.Tag.Result = 'save'
         $w.Close()
     })
@@ -2093,10 +2093,10 @@ function Show-TKEditor {
     & $updateHint $d
 
     $d.CmbLanguage.Add_SelectionChanged({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         if (-not $dd -or $dd.Existing) { return }
-        $lang = [string]$sender.SelectedItem
+        $lang = [string]$src.SelectedItem
         $dd.TxtBody.Text = Get-TKTemplateBody $lang
         $ext = switch ($lang) { 'Python' { '.py' } 'Bash' { '.sh' } default { '.ps1' } }
         if ($dd.TxtFile.Text) { $dd.TxtFile.Text = [IO.Path]::ChangeExtension($dd.TxtFile.Text, $ext) }
@@ -2109,15 +2109,15 @@ function Show-TKEditor {
         }
     })
     $d.TxtName.Add_TextChanged({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         if (-not $dd -or $dd.Existing) { return }
         $ext = switch ([string]$dd.CmbLanguage.SelectedItem) { 'Python' { '.py' } 'Bash' { '.sh' } default { '.ps1' } }
-        $dd.TxtFile.Text = ConvertTo-TKFileName $sender.Text $ext
+        $dd.TxtFile.Text = ConvertTo-TKFileName $src.Text $ext
     })
     $d.BtnCheck.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         if ([string]$dd.CmbLanguage.SelectedItem -ne 'PowerShell') { $dd.TxtCheck.Text = 'Syntax checking is available for PowerShell scripts.'; return }
         $errs = @(Test-TKScriptSyntax -Text $dd.TxtBody.Text)
         if ($errs.Count) {
@@ -2129,16 +2129,16 @@ function Show-TKEditor {
         }
     })
     $d.BtnPaste.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         $clip = ''
         try { $clip = [System.Windows.Clipboard]::GetText() } catch { }
         if (-not $clip) { $dd.TxtCheck.Text = 'The clipboard has no text.'; return }
         Import-TKPastedScript -D $dd -Text $clip
     })
     $d.BtnExternal.Add_Click({
-        param($sender, $e)
-        $dd = [System.Windows.Window]::GetWindow($sender).Tag
+        param($src, $e)
+        $dd = [System.Windows.Window]::GetWindow($src).Tag
         if (-not $dd.Existing) { $dd.TxtCheck.Text = 'Save the script first, then open it in an external editor.'; return }
         $code = Get-Command code.cmd -ErrorAction SilentlyContinue | Select-Object -First 1
         try {
@@ -2148,8 +2148,8 @@ function Show-TKEditor {
         } catch { $dd.TxtCheck.Text = $_.Exception.Message }
     })
     $d.BtnSave.Add_Click({
-        param($sender, $e)
-        $w = [System.Windows.Window]::GetWindow($sender)
+        param($src, $e)
+        $w = [System.Windows.Window]::GetWindow($src)
         if (Save-TKEditor $w.Tag) { $w.Tag.Result = 'saved'; $w.Close() }
     })
 
@@ -2166,7 +2166,7 @@ function Import-TKPastedScript {
     $lines = $Text -split "`r?`n"
     $meta = [ordered]@{}
     $params = @()
-    $bodyLines = New-Object System.Collections.Generic.List[string]
+    $bodyLines = [System.Collections.Generic.List[string]]::new()
     $inHeader = $true
     foreach ($l in $lines) {
         if ($inHeader -and $l -match '^\s*#\s*@([A-Za-z][\w-]*)\s*:\s?(.*)$') {
@@ -2332,7 +2332,7 @@ try {
 
 # Keep the app alive if an event handler throws
 [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Add_UnhandledException({
-    param($sender, $e)
+    param($src, $e)
     $e.Handled = $true
     try { Write-TKLine -Text ("Tech Kit error: " + $e.Exception.Message) -Kind Error } catch { }
 })
@@ -2434,7 +2434,7 @@ $ui.ChkWrap.Add_Click({
 })
 
 $ui.TxtTermInput.Add_PreviewKeyDown({
-    param($sender, $e)
+    param($src, $e)
     $key = $e.Key
     if ($key -eq [System.Windows.Input.Key]::Enter) {
         $e.Handled = $true
@@ -2467,7 +2467,7 @@ $ui.TxtTermInput.Add_PreviewKeyDown({
 })
 
 $ui.TabOutput.Add_SelectionChanged({
-    param($sender, $e)
+    param($src, $e)
     if ($e.OriginalSource -ne $ui.TabOutput) { return }
     if ($ui.TabOutput.SelectedItem -eq $ui.TabItemTerminal) {
         $null = $ui.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Input, [Action] { $null = $ui.TxtTermInput.Focus() })
@@ -2475,7 +2475,7 @@ $ui.TabOutput.Add_SelectionChanged({
 })
 
 $script:Win.Add_PreviewKeyDown({
-    param($sender, $e)
+    param($src, $e)
     $ctrl = ([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Control) -ne 0
     if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::F) {
         $null = $ui.TxtSearch.Focus(); $ui.TxtSearch.SelectAll(); $e.Handled = $true
@@ -2492,7 +2492,7 @@ $script:Win.Add_PreviewKeyDown({
 })
 
 $script:Win.Add_Closing({
-    param($sender, $e)
+    param($src, $e)
     if ($script:Job -and $script:Job.Kind -eq 'worker') {
         $r = Show-TKDialog -Title 'Still running' -Message 'A task is still running. Stop it and close Tech Kit?' -Buttons @('Stop and close', 'Cancel') -Default 1
         if ($r.Button -ne 'Stop and close') { $e.Cancel = $true; return }

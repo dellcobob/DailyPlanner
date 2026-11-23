@@ -26,7 +26,7 @@ $known = @{
     5432 = 'PostgreSQL'; 5900 = 'VNC'; 5985 = 'WinRM HTTP'; 5986 = 'WinRM HTTPS'; 8080 = 'HTTP alt'; 8443 = 'HTTPS alt'; 9100 = 'Printer'
 }
 
-$portList = New-Object System.Collections.Generic.List[int]
+$portList = [System.Collections.Generic.List[int]]::new()
 foreach ($part in ($Ports -split '[,;\s]+' | Where-Object { $_ })) {
     if ($part -match '^(\d+)-(\d+)$') {
         $a = [int]$Matches[1]; $b = [int]$Matches[2]

@@ -49,7 +49,7 @@ try {
         }
         $avg = $null
         if ($times.Count) { $avg = [int](($times | Measure-Object -Average).Average) }
-        $line = ('{0,3}  {1,-16} {2,6}  {3}' -f $ttl, $(if ($hopAddr) { $hopAddr } else { '*' }), $(if ($avg -ne $null) { "$avg ms" } else { 'timeout' }), $name)
+        $line = ('{0,3}  {1,-16} {2,6}  {3}' -f $ttl, $(if ($hopAddr) { $hopAddr } else { '*' }), $(if ($null -ne $avg) { "$avg ms" } else { 'timeout' }), $name)
         $color = 'Gray'
         if (-not $hopAddr) { $color = 'DarkGray' } elseif ($avg -gt 150) { $color = 'Yellow' }
         Write-Host $line -ForegroundColor $color

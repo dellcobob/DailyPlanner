@@ -36,7 +36,7 @@ if ($IncludeComputers) {
 }
 function Get-OU { param([string]$Dn) ($Dn -split '(?<!\\),', 2)[1] }
 
-$rows = New-Object System.Collections.Generic.List[object]
+$rows = [System.Collections.Generic.List[object]]::new()
 foreach ($o in $objects) {
     $kind = $(if ($o.ObjectClass -eq 'computer') { 'Computer' } else { 'User' })
     if ($o.whenCreated -ge $since) {
