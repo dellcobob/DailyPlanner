@@ -546,7 +546,14 @@ async function test(name, fn) {
   await test('Tools can preview any medal without saving', async () => {
     const { ctx, p } = await open();
     await tab(p, 'tools');
-    assert.equal(await p.locator('#tier-preview option').count(), 11);
+    assert.equal(await p.locator('#tier-preview option').count(), 12);
+    await p.selectOption('#tier-preview', '11'); await p.click('#tier-play');
+    await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-tag'), 'Goal achieved');
+    assert.match(await p.textContent('#win-sub'), /Preview only/);
+    await p.click('#win-stage', { position: { x: 20, y: 20 } }); await p.click('#win-close');
+    await p.waitForFunction(() => !document.querySelector('#win[open]'));
+    assert.deepEqual((await S(p)).goals, {}, 'the goal preview saves nothing');
     await p.selectOption('#tier-preview', '8'); await p.click('#tier-play');
     await p.waitForSelector('#win[open]');
     assert.equal(await p.textContent('#win-name'), 'Ace');
@@ -560,15 +567,17 @@ async function test(name, fn) {
 
   await test('each medal has its own sound, and none of them distort', async () => {
     const { ctx, p } = await open();
-    const r = await p.evaluate(async () => { const out = []; for (let k = 0; k < 11; k++) out.push(await window.MM.renderTier(k)); return out; });
+    // 11 tiers plus the goal-achieved fanfare (index 11).
+    const r = await p.evaluate(async () => { const out = []; for (let k = 0; k < 12; k++) out.push(await window.MM.renderTier(k)); return out; });
     r.forEach((x, k) => {
-      assert.ok(x.peak > 0.05, 'medal ' + (k + 1) + ' makes sound (peak ' + x.peak.toFixed(3) + ')');
-      assert.ok(x.peak <= 1, 'medal ' + (k + 1) + ' does not clip (peak ' + x.peak.toFixed(3) + ')');
-      assert.ok(x.seconds > 0.6 && x.seconds < 4.5, 'medal ' + (k + 1) + ' length ' + x.seconds.toFixed(2) + 's');
+      const name = k === 11 ? 'goal sound' : 'medal ' + (k + 1);
+      assert.ok(x.peak > 0.05, name + ' makes sound (peak ' + x.peak.toFixed(3) + ')');
+      assert.ok(x.peak <= 1, name + ' does not clip (peak ' + x.peak.toFixed(3) + ')');
+      assert.ok(x.seconds > 0.6 && x.seconds < 4.5, name + ' length ' + x.seconds.toFixed(2) + 's');
     });
     const sig = x => x.env.map((e, i) => e * 1000 + x.zc[i] / 10);
     let worst = 0;
-    for (let a = 0; a < 11; a++) for (let b = a + 1; b < 11; b++) {
+    for (let a = 0; a < 12; a++) for (let b = a + 1; b < 12; b++) {
       const A = sig(r[a]), B = sig(r[b]); let dot = 0, na = 0, nb = 0;
       for (let i = 0; i < A.length; i++) { dot += A[i] * B[i]; na += A[i] * A[i]; nb += B[i] * B[i]; }
       const sim = dot / Math.sqrt(na * nb); worst = Math.max(worst, sim);
@@ -790,6 +799,14 @@ async function test(name, fn) {
     await hideApp(p, true); await hideApp(p, false);
     assert.equal(await p.isVisible('#lock'), false, 'a quick switch away does not lock (1 minute default)');
     await p.selectOption('#set-lockafter', '0');
+    await newGoal(p, 'secret goal', async () => { await p.check('#gs-use-steps'); await p.fill('[data-gs-step="0"]', 'secret step'); });
+    await p.click('#view-goals .goal-name'); await p.waitForSelector('#goal-sheet[open]');
+    await hideApp(p, true); await p.waitForSelector('#lock:not([hidden])'); await hideApp(p, false);
+    assert.equal(await p.isVisible('#goal-sheet'), false, 'locking closes the goal editor');
+    const left = await p.content();
+    assert.ok(!left.includes('secret goal') && !left.includes('secret step'), 'no goal text is left in the page');
+    await unlock(p, 'swordfish42'); await p.waitForSelector('#day-list .task', { timeout: 15000 });
+    assert.match(await p.textContent('#day-goals'), /secret goal/);
     await tab(p, 'day'); await p.evaluate(() => { document.querySelector('.notes-box').open = true; }); await p.fill('.notes-box textarea', 'private note');
     await hideApp(p, true);
     await p.waitForSelector('#lock:not([hidden])');
@@ -972,12 +989,207 @@ async function test(name, fn) {
     await ctx.close();
   });
 
+  const yogaRow = p => p.locator('#day-list .task', { has: p.locator('.task-title', { hasText: /^Yoga$/ }) });
+  async function newGoal(p, name, setup) {
+    if (!(await p.isVisible('#view-goals'))) await tab(p, 'goals');
+    await p.click('#view-goals .vnav-actions [data-goal-new]'); await p.waitForSelector('#goal-sheet[open]');
+    await p.fill('#gs-name', name); if (setup) await setup();
+    await p.click('#gs-save');
+  }
+  async function closeWin(p) {
+    await p.waitForSelector('#win[open]');
+    await p.click('#win-stage', { position: { x: 20, y: 20 } }); await p.click('#win-close');
+    await p.waitForFunction(() => !document.querySelector('#win[open]'));
+    await p.waitForTimeout(30); // the close event fires a moment later
+  }
+
+  await test('goals: rough dates name, time, and order their groups', async () => {
+    const { ctx, p } = await open();
+    const r = await p.evaluate(() => { const M = window.MM; return {
+      names: ['2027-S1', '2026-S4', '2027-06', '2027-Q2', '2027'].map(M.byName),
+      periods: ['2026-S4', '2027-Q2', '2028-02', '2027', '2027-S2'].map(M.byPeriod),
+      left: ['2026-11', '2026-12', '2026-S4', '2027', '2025'].map(b => M.timeLeft(b).txt),
+      first: ['s', 'q', 'm', 'y'].map(k => M.byChoices(k).slice(0, 2)) }; });
+    assert.deepEqual(r.names, ['Spring 2027', 'Winter 2026/27', 'By June 2027', 'Q2 2027', 'By end of 2027']);
+    assert.deepEqual(r.periods, [{ start: '2026-12-01', end: '2027-02-28' }, { start: '2027-04-01', end: '2027-06-30' }, { start: '2028-02-01', end: '2028-02-29' }, { start: '2027-01-01', end: '2027-12-31' }, { start: '2027-06-01', end: '2027-08-31' }]);
+    assert.deepEqual(r.left, ['10 days left', '~6 weeks left', '~3 months left', '~13 months left', 'Time is up']);
+    assert.deepEqual(r.first, [['2026-S3', '2026-S4'], ['2026-Q4', '2027-Q1'], ['2026-11', '2026-12'], ['2026', '2027']]);
+    await ctx.close();
+  });
+
+  await test('goals: steps, linked tasks, and a number show on Goals, Day, Month, and the record', async () => {
+    const { ctx, p } = await open();
+    await tab(p, 'goals');
+    assert.match(await p.textContent('#view-goals'), /Set a goal to work toward/);
+    assert.match(await p.textContent('#day-goals'), /Work toward something bigger/);
+    await p.click('#view-goals .vnav-actions [data-goal-new]'); await p.waitForSelector('#goal-sheet[open]');
+    assert.match(await p.textContent('#gs-when-hint'), /Winter 2026\/27.*Feb 28, 2027/, 'defaults to a season a couple of months out');
+    assert.equal(await p.isVisible('#gs-delete'), false);
+    await p.fill('#gs-name', 'Run a 5K');
+    await p.check('#gs-use-steps');
+    await p.fill('[data-gs-step="0"]', 'Buy shoes'); await p.press('[data-gs-step="0"]', 'Enter');
+    await p.fill('[data-gs-step="1"]', 'Sign up'); await p.press('[data-gs-step="1"]', 'Enter');
+    await p.fill('[data-gs-step="2"]', 'Throwaway'); await p.click('[data-gs-rm="2"]');
+    await p.check('#gs-use-links'); await p.click('#gs-save');
+    assert.match(await p.textContent('#gs-error'), /Pick at least one task/);
+    await p.click('[data-glink="2"]'); await p.click('#gs-save');
+    assert.match(await p.textContent('#gs-error'), /how many check-offs/);
+    await p.fill('#gs-target', '4');
+    await p.check('#gs-use-num'); await p.fill('#gs-nt', '3.1'); await p.fill('#gs-nu', 'miles');
+    await p.click('#gs-save');
+    assert.match(await p.textContent('#toast-msg'), /Goal added under Winter 2026\/27/);
+    const g = Object.values((await S(p)).goals)[0];
+    assert.deepEqual(g, { t: 'Run a 5K', by: '2026-S4', c: '2026-11-20', ms: [{ t: 'Buy shoes' }, { t: 'Sign up' }], lk: ['2'], lt: 4, ns: 0, nv: 0, nt: 3.1, nu: 'miles' });
+    await newGoal(p, 'Save for a bike', async () => {
+      await p.check('input[name=gs-kind][value=m]');
+      assert.equal(await p.inputValue('#gs-when'), '2027-02', 'switching to months keeps about the same date');
+      await p.selectOption('#gs-when', '2026-12');
+      await p.check('#gs-use-num'); await p.fill('#gs-nv', '250'); await p.fill('#gs-nt', '800'); await p.fill('#gs-nu', '$');
+    });
+    assert.deepEqual(await p.$$eval('#view-goals .ggroup .panel-head h2', els => els.map(e => e.firstChild.textContent)), ['By December 2026', 'Winter 2026/27'], 'soonest group first');
+    assert.match(await p.textContent('#view-goals .ggroup .panel-head h2 span'), /~6 weeks left/);
+    assert.match(await p.textContent('#view-goals [data-gnum]'), /\$250 \/ \$800/);
+    // Day screen: goals fed by this day's tasks come first, and the linked task wears a badge.
+    await tab(p, 'day');
+    assert.deepEqual(await p.$$eval('#day-goals .gd-name', els => els.map(e => e.textContent)), ['Run a 5K', 'Save for a bike']);
+    assert.match(await yogaRow(p).locator('.gbadge').textContent(), /Run a 5K/);
+    await yogaRow(p).locator('input').check();
+    assert.match(await p.textContent('#toast-msg'), /\+1 toward "Run a 5K": 1 of 4 check-offs/);
+    assert.match(await p.textContent('#day-goals'), /1 of 1 linked task done today/);
+    await p.locator('#day-goals [data-gstep]').click(); // the list re-renders to show the next step
+    assert.match(await p.textContent('#day-goals .gnext'), /Sign up/);
+    assert.equal(await p.textContent('#day-goals .gd-pct'), '25%', 'average of steps 1/2, check-offs 1/4, and miles 0/3.1');
+    // Month: goals card, a flag on the goal date, and the weekly record lists goals.
+    await tab(p, 'month');
+    assert.match(await p.textContent('.mgoals'), /Coming up[\s\S]*Save for a bike[\s\S]*Run a 5K/);
+    await p.click('[data-mstep="1"]');
+    assert.match(await p.getAttribute('.mcell[data-goto="2026-12-31"]', 'aria-label'), /Goal date: By December 2026/);
+    assert.equal(await p.locator('.mcell[data-goto="2026-12-31"] .mmark svg').count(), 1);
+    assert.match(await p.textContent('.mgoals'), /Due this month[\s\S]*Save for a bike/);
+    await p.click('.mgoals [data-goal-open]'); await p.waitForSelector('#goal-sheet[open]');
+    assert.equal(await p.inputValue('#gs-name'), 'Save for a bike');
+    await p.click('#goal-sheet [data-close]');
+    await tab(p, 'tools'); await p.click('#rec-this');
+    const rec = await p.getAttribute('#rec-frame', 'srcdoc');
+    assert.match(rec, /<h2>Goals<\/h2>[\s\S]*Save for a bike[\s\S]*Run a 5K<\/b> · Winter 2026\/27 · 25% so far/);
+    await ctx.close();
+  });
+
+  await test('goals: finishing every part plays the trophy, and undoing a part reopens the goal', async () => {
+    const { ctx, p } = await open();
+    await newGoal(p, 'Morning yoga', async () => { await p.check('#gs-use-links'); await p.click('[data-glink="2"]'); await p.fill('#gs-target', '1'); });
+    await tab(p, 'day');
+    await yogaRow(p).locator('input').check();
+    await p.waitForSelector('#win[open]');
+    assert.equal(await p.textContent('#win-tag'), 'Goal achieved');
+    assert.equal(await p.textContent('#win-name'), 'Morning yoga');
+    assert.match(await p.textContent('#win-sub'), /Winter 2026\/27, 3 months early/);
+    assert.equal(await p.evaluate(() => document.getElementById('win').classList.contains('goal-win')), true);
+    assert.ok(await p.evaluate(() => document.querySelectorAll('#win-emblem .em-frame path').length) >= 3, 'trophy emblem');
+    await closeWin(p);
+    assert.equal(await p.evaluate(() => document.getElementById('win').classList.contains('goal-win')), false);
+    assert.equal(Object.values((await S(p)).goals)[0].d, '2026-11-20');
+    assert.equal(await p.locator('#day-goals .gd').count(), 0, 'achieved goals leave the Day screen');
+    assert.equal(await yogaRow(p).locator('.gbadge').count(), 0);
+    await tab(p, 'goals');
+    assert.match(await p.textContent('#goals-won summary'), /Achieved1/);
+    assert.match(await p.textContent('#goals-won'), /Morning yoga.*achieved Nov 20, 2026, 3 months early/);
+    await tab(p, 'month');
+    assert.match(await p.getAttribute('.mcell[data-goto="2026-11-20"]', 'aria-label'), /Goal achieved: Morning yoga/);
+    assert.match(await p.textContent('.mgoals'), /Achieved this month[\s\S]*Morning yoga/);
+    await tab(p, 'day');
+    await yogaRow(p).locator('input').uncheck();
+    assert.equal(Object.values((await S(p)).goals)[0].d, undefined, 'unchecking reopens it');
+    assert.equal(await p.locator('#day-goals .gd').count(), 1);
+    await ctx.close();
+  });
+
+  await test('goals: update a number, mark a simple goal achieved, edit, and delete with undo', async () => {
+    const { ctx, p } = await open();
+    await newGoal(p, 'Save for a bike', async () => { await p.check('#gs-use-num'); await p.fill('#gs-nv', '250'); await p.fill('#gs-nt', '800'); await p.fill('#gs-nu', '$'); });
+    await p.click('#view-goals [data-gnum]'); await p.waitForSelector('#num-dialog[open]');
+    assert.match(await p.textContent('#num-body'), /now \$250, target \$800/);
+    await p.click('[data-nstep="1"]'); assert.equal(await p.inputValue('#num-val'), '251');
+    await p.fill('#num-val', '400'); await p.press('#num-val', 'Enter');
+    assert.match(await p.textContent('#toast-msg'), /Save for a bike: \$400 \(50%\)/);
+    assert.equal(await p.textContent('#view-goals .goal-pct'), '50%');
+    await p.click('#view-goals [data-gnum]'); await p.fill('#num-val', '800'); await p.click('#num-ok');
+    await closeWin(p);
+    // A goal with no parts is marked achieved by hand.
+    await newGoal(p, 'Learn to juggle');
+    assert.match(await p.textContent('#view-goals'), /Tap the goal to add steps/);
+    await p.click('#view-goals .goal-name:text("Learn to juggle")'); await p.waitForSelector('#goal-sheet[open]');
+    assert.equal(await p.isVisible('#gs-done-line'), true);
+    await p.check('#gs-done'); await p.click('#gs-save');
+    await closeWin(p);
+    let goals = Object.values((await S(p)).goals);
+    assert.deepEqual(goals.map(g => [g.t, g.d, g.m]), [['Save for a bike', '2026-11-20', undefined], ['Learn to juggle', '2026-11-20', 1]]);
+    // A goal whose parts are all complete cannot be unmarked without changing a part.
+    await p.evaluate(() => { document.getElementById('goals-won').open = true; });
+    await p.click('#goals-won .goal-name:text("Save for a bike")'); await p.waitForSelector('#goal-sheet[open]');
+    await p.uncheck('#gs-done'); await p.click('#gs-save');
+    assert.match(await p.textContent('#gs-error'), /Every part of this goal is complete/);
+    await p.fill('#gs-nt', '1000'); await p.click('#gs-save');
+    goals = (await S(p)).goals;
+    assert.equal(Object.values(goals)[0].d, undefined, 'raising the target reopens it');
+    assert.equal(await p.textContent('#view-goals .goal-pct'), '80%');
+    // Delete, then undo.
+    await p.click('#view-goals .goal-name:text("Save for a bike")'); await p.click('#gs-delete');
+    await p.waitForSelector('#ask-dialog[open]'); await choose(p, '#ask-ok');
+    assert.equal(Object.keys((await S(p)).goals).length, 1);
+    await p.click('#toast-act');
+    assert.equal(Object.keys((await S(p)).goals).length, 2);
+    await ctx.close();
+  });
+
+  await test('goals: backups keep them, damaged ones are refused, and archiving keeps check-off counts', async () => {
+    const { ctx, p } = await open();
+    const r = await p.evaluate(() => {
+      const M = window.MM, base = () => ({ v: 3, tasks: { a: { o: 1, h: [{ f: '2000-01-01', t: 'Run', s: 360, e: 390, d: 127 }] } } });
+      const ok = M.validate(Object.assign(base(), { goals: { g1: { t: ' Run‮ 5K ', by: '2027-S1', c: '2026-01-01', ms: [{ t: 'Shoes', c: 1 }, { t: '' }, { x: 1 }], lk: ['a', 'a', 'BAD!'], lt: 10, lb: 3, ns: 0, nv: 2, nt: 3.1, nu: 'miles', extra: 1, m: 2 } } }));
+      const bad = [{ g1: { t: 'x', by: '2027-13', c: '2026-01-01' } }, { g1: { t: '', by: '2027', c: '2026-01-01' } }, { 'BAD ID': { t: 'x', by: '2027', c: '2026-01-01' } }, { g1: { t: 'x', by: '2027', c: 'nope' } }, { g1: { t: 'x', by: '2027', c: '2026-01-01', ms: Array(51).fill({ t: 's' }) } }, 'not goals']
+        .map(goals => { try { M.validate(Object.assign(base(), { goals })); return 'accepted'; } catch (e) { return e.message; } });
+      const many = {}; for (let i = 0; i < 301; i++) many['g' + i.toString(36)] = { t: 'x', by: '2027', c: '2026-01-01' };
+      let tooMany; try { M.validate(Object.assign(base(), { goals: many })); tooMany = 'accepted'; } catch (e) { tooMany = e.message; }
+      return { ok: JSON.parse(JSON.stringify(ok.goals)), seq: ok.seq, bad, tooMany };
+    });
+    assert.deepEqual(r.ok, { g1: { t: 'Run 5K', by: '2027-S1', c: '2026-01-01', ms: [{ t: 'Shoes', c: 1 }], lk: ['a'], lt: 10, lb: 3, ns: 0, nv: 2, nt: 3.1, nu: 'miles' } });
+    assert.ok(r.seq > parseInt('g1', 36), 'new ids never collide with goal ids');
+    r.bad.forEach((m, i) => assert.notEqual(m, 'accepted', 'damaged goal ' + i + ' was accepted'));
+    assert.match(r.tooMany, /too many goals/);
+    // Archiving old days keeps the check-offs they gave a goal.
+    const counts = await p.evaluate(() => {
+      const M = window.MM, st = M.state;
+      st.goals.zz = { t: 'Yoga 10 times', by: '2027', c: '2026-10-01', lk: ['2'], lt: 10 };
+      for (const d of ['2026-09-30', '2026-10-05', '2026-10-07', '2026-11-02', '2026-11-20']) st.days[d] = { c: ['2'] };
+      const before = M.gProgress(st.goals.zz).lk.done; M.archive('2026-11-01');
+      return { before, after: M.gProgress(st.goals.zz).lk.done, lb: st.goals.zz.lb, left: Object.keys(st.days).sort() };
+    });
+    assert.deepEqual(counts, { before: 4, after: 4, lb: 2, left: ['2026-11-02', '2026-11-20'] });
+    // Restoring a backup with goals says so, and hostile goal text stays text.
+    await restoreFile(p, 'goals.json', { v: 3, tasks: { a: { o: 1, h: [{ f: '2000-01-01', t: 'Run', s: 360, e: 390, d: 127 }] } }, goals: { g1: { t: '<img src=x onerror="window.__pwned=1">', by: '2027', c: '2026-11-01', ms: [{ t: '<b>bold</b>' }] } } });
+    await p.waitForSelector('#ask-dialog[open]');
+    assert.match(await p.textContent('#ask-body'), /1 task, 1 goal, and/);
+    await choose(p, '#ask-ok');
+    await tab(p, 'goals');
+    assert.equal(await p.locator('#view-goals img, #view-goals b:text("bold")').count(), 0);
+    assert.match(await p.textContent('#view-goals .goal-name'), /<img src=x/);
+    assert.equal(await p.evaluate(() => window.__pwned), undefined);
+    await ctx.close();
+  });
+
   await test('layout fits phone widths with long names and large text', async () => {
     const { ctx, p } = await open({ viewport: { width: 320, height: 700 } });
     await p.addStyleTag({ content: 'html{font-size:130%}' });
     await p.click('#add-row');
     await p.fill('#ts-name', 'A'.repeat(120)); await p.click('#ts-save');
-    for (const v of ['day', 'week', 'month', 'tools']) {
+    await tab(p, 'goals'); await p.click('#view-goals .vnav-actions [data-goal-new]');
+    await p.fill('#gs-name', 'B'.repeat(120)); await p.check('#gs-use-steps'); await p.fill('[data-gs-step="0"]', 'C'.repeat(120));
+    await p.check('#gs-use-num'); await p.fill('#gs-nv', '123456789'); await p.fill('#gs-nt', '987654321'); await p.fill('#gs-nu', 'D'.repeat(16));
+    const sheet = await p.evaluate(() => { const b = document.querySelector('#goal-sheet .sheet-body'); return [b.scrollWidth, b.clientWidth]; });
+    assert.equal(sheet[0], sheet[1], 'goal editor scrolls sideways');
+    await p.click('#gs-save');
+    for (const v of ['day', 'week', 'month', 'goals', 'tools']) {
       await tab(p, v);
       const w = await p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
       assert.equal(w[0], w[1], v + ' view scrolls sideways');

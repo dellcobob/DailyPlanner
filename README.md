@@ -18,6 +18,7 @@ Daily Missions: a planner for your whole day that runs fully offline on your pho
 - **Reorder by dragging** the grip on the right, or press and hold a task. Order never changes a task's time. To change a time, tap the time.
 - **Repeating tasks:** when you change or remove one, choose "only this day" or "this day and later". Earlier days always keep what they had.
 - **Week view** with seven columns, and **Month view** to look back at any day, see streaks, and open weekly records.
+- **Goals to work toward.** Give each goal a rough date (a month, a season, a quarter, or a year) and goals with the same date are grouped under a name like "Spring 2027", "Q2 2027", or "By June 2027", soonest first, with roughly how much time is left. Measure progress with any mix of milestone steps, linked daily tasks (every check-off counts toward a target, like 40 workouts), and a number you update (miles, pages, or $ saved). Goals have their own **Goals** tab, show on the **Day** screen (with a badge on linked tasks and the next step to tick), and on the **Month** screen (a flag on each goal's date, a trophy on the day one was achieved). Finishing every part plays a trophy celebration with its own fanfare.
 - **Notifications (Android app).** In **Tools > Notifications**, turn on any mix of: task reminders (when a task starts, or 5 to 30 minutes before), a morning summary before the first task, an evening finish-day reminder at a time you pick, and a nudge when a task ends without being checked off. One switch turns them all on or off, and **On the lock screen** chooses whether task names show, are hidden on the lock screen, or never show. Reminders arrive even when the app is closed and come back after the phone restarts. **Send a test notification** shows one right away.
 - **Light, dark, or auto** theme, and a 12 or 24-hour clock. Light mode uses soft greys instead of bright white, and your theme is applied before the app first draws, so there is no flash on launch.
 
@@ -46,7 +47,7 @@ Everything is saved on the device as compact JSON (about 100 bytes per day). In 
 - whether days past a limit keep a tiny score ("9/13") or are deleted,
 - whether it asks before archiving.
 
-**Tools > Backups** has Export backup (.json), Restore backup, and Save HTML copy. **Weekly records** download or print a readable week, laid out like the printed schedule. On screen they match your theme (and a downloaded record follows the viewer's light or dark setting); printing is always on white. Restore also reads backups from the older Morning Missions tracker.
+**Tools > Backups** (routine, check marks, notes, goals, and settings) has Export backup (.json), Restore backup, and Save HTML copy. **Weekly records** download or print a readable week, laid out like the printed schedule. On screen they match your theme (and a downloaded record follows the viewer's light or dark setting); printing is always on white. Restore also reads backups from the older Morning Missions tracker.
 
 ## Security and privacy
 

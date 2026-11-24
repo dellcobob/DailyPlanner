@@ -2,7 +2,7 @@
 <html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-8lKCqSMpLXU2HMFOfIqlqwjaDrO8txCWX/w93kVuJi0='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-raDLxarIwnRy/9M9wy+naxI8HrC53qTfaE/+5U1KBl4='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#182331">
@@ -42,9 +42,11 @@ button:disabled{opacity:.5;cursor:default}
 .icon-btn{display:grid;place-items:center;width:44px;height:44px;border-radius:8px;color:#d5dfea;flex:none}
 .icon-btn svg{width:22px;height:22px}
 .tabs button:hover,.icon-btn:hover{background:#ffffff1a}
+@media (min-width:721px) and (max-width:900px){.tabs{gap:2px}.tabs button{padding:8px 9px;gap:6px}}
 /* shared bits */
 .btn{min-height:44px;padding:9px 16px;border-radius:9px;font-weight:800;font-size:.92rem;background:var(--surface-3);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center}
 .btn.primary{background:var(--accent);color:var(--on-accent)}
+.btn svg{width:20px;height:20px;flex:none}
 .btn.ghost{background:var(--surface);border:1px solid var(--line-strong)}
 .btn.danger{background:var(--danger-bg);color:var(--danger)}
 .btn.sm{min-height:40px;padding:6px 12px;font-size:.85rem}
@@ -179,6 +181,87 @@ textarea.input{resize:vertical;line-height:1.5}
 .weeks .wk-pct{color:var(--muted);font-weight:800;font-variant-numeric:tabular-nums}
 .legend{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted);margin:10px 0 0;flex-wrap:wrap}
 .legend i{display:inline-block;width:16px;height:12px;border-radius:3px;background:var(--accent)}
+.legend svg{width:14px;height:14px;color:var(--accent-ink)}
+.mmark{position:absolute!important;top:3px;right:3px;display:flex;gap:1px;color:var(--accent-ink)}
+.mmark svg{width:12px;height:12px}
+@media (min-width:700px){.mmark svg{width:15px;height:15px}}
+/* goals */
+.ggroup{margin:0 0 14px}
+@media (max-width:420px){.ggroup .hbtn span{display:none}.ggroup .hbtn{padding:0 10px}}
+.panel-head h2 span.late,.gd-when.late{color:var(--accent)}
+.glate{margin:0;padding:10px 14px;font-size:.85rem;color:var(--muted);background:var(--warn-bg);border-bottom:1px solid var(--warn-line)}
+.glist{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.goal{padding:12px 14px 14px;border-bottom:1px solid var(--line);min-width:0;display:flex;flex-direction:column;gap:8px}
+.goal:last-child{border-bottom:0}
+.goal-top{display:flex;align-items:flex-start;gap:10px}
+.goal-name{flex:1;min-width:0;text-align:left;font-size:1.05rem;font-weight:800;line-height:1.3;min-height:30px;overflow-wrap:anywhere}
+.goal-pct{flex:none;font-size:1.15rem;font-weight:900;font-style:italic;font-variant-numeric:tabular-nums;color:var(--accent-ink)}
+.goal .bar,.gd .bar,.mg .bar{height:6px;border-radius:3px}
+.goal-parts{display:flex;flex-wrap:wrap;gap:6px}
+.gchip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;max-width:100%;overflow-wrap:anywhere}
+.gchip svg{width:15px;height:15px;flex:none}
+.gchip b{color:var(--accent-ink)}
+button.gchip{color:var(--ink);border-color:var(--line-strong)}
+.gupd{color:var(--accent-ink);font-weight:800;margin-left:2px}
+.gnext{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
+.gnext small{display:block;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.gsteps summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-size:.82rem;font-weight:800;color:var(--accent-ink)}
+.gsteps ul{list-style:none;margin:0;padding:0}
+.gsteps label{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer;overflow-wrap:anywhere;line-height:1.3}
+.gsteps .cb{width:22px;height:22px}
+.gsteps .cb:checked::after{width:6px;height:11px}
+.gsteps .cb:checked+span{color:var(--muted);text-decoration:line-through}
+.gwon-card summary{cursor:pointer;display:flex;align-items:center;gap:8px;min-height:40px;font-weight:900;font-style:italic;text-transform:uppercase}
+.gwon-card summary b{font-style:normal;background:var(--accent);color:var(--on-accent);border-radius:10px;padding:0 8px;font-size:.8rem}
+.gwon{list-style:none;margin:8px 0 0;padding:0}
+.gwon li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.gwon li>svg{width:24px;height:24px;flex:none;color:var(--accent-ink);margin-top:4px}
+.gwon li div{min-width:0;display:flex;flex-direction:column}
+.gwon li span{font-size:.8rem;color:var(--muted);font-weight:600}
+.gempty p{margin:0 0 10px;line-height:1.5}
+.gempty ul{margin:0 0 14px;padding-left:20px;line-height:1.5}
+.gpanel{margin:14px 0 0}
+.gday{list-style:none;margin:0;padding:0}
+.gd{padding:10px 14px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.gd:last-child{border-bottom:0}
+.gd-top{display:flex;align-items:flex-start;gap:10px}
+.gd-main{flex:1;min-width:0;text-align:left;display:flex;flex-direction:column;min-height:40px}
+.gd-name{font-weight:800;line-height:1.3;overflow-wrap:anywhere}
+.gd-when{font-size:.78rem;color:var(--muted);font-weight:700}
+.gd-pct{flex:none;font-weight:900;font-style:italic;font-variant-numeric:tabular-nums;color:var(--accent-ink)}
+.gd-today{font-size:.8rem;color:var(--muted);font-weight:700}
+.gpitch{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:14px}
+.gpitch svg{width:28px;height:28px;flex:none;color:var(--accent-ink)}
+.gpitch p{flex:1 1 200px;margin:0;font-size:.9rem;line-height:1.45;color:var(--muted)}
+.gpitch p b{color:var(--ink)}
+.gbadge{display:inline-block;max-width:18ch;overflow:hidden;text-overflow:ellipsis;text-transform:none;letter-spacing:0;font-size:.7rem;background:transparent;border:1px solid var(--accent-strong);color:var(--accent-ink)}
+.gbadge svg{width:11px;height:11px;vertical-align:-1px;margin-right:3px}
+.mgoals h3{margin:12px 0 4px;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mgoals h3:first-of-type{margin-top:0}
+.mg{list-style:none;margin:0 0 4px;padding:0}
+.mg li{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;padding:6px 0}
+.mg .bar{grid-column:1/-1}
+.mg-name{min-width:0;text-align:left;display:flex;flex-direction:column;min-height:40px;justify-content:center}
+.mg-name span{font-weight:750;line-height:1.3;overflow-wrap:anywhere}
+.mg-name small{font-size:.76rem;color:var(--muted);font-weight:600}
+.mg-pct{font-weight:900;font-style:italic;color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.mg-pct svg{width:20px;height:20px;display:block}
+.steps-edit{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.steps-edit li{display:flex;align-items:center;gap:6px}
+.steps-edit .input{flex:1}
+.gs-rm{color:var(--muted)}
+.gs-part{border:1px solid var(--line);border-radius:12px;padding:6px 12px 10px;margin:12px 0 0;background:var(--surface-2)}
+.gs-part>.check-line{margin:0}
+.gs-box{padding-top:4px}
+.link-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,140px),1fr));gap:6px;margin-bottom:12px}
+.link-pick button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;min-height:48px;padding:6px 10px;border-radius:9px;border:1px solid var(--line-strong);background:var(--surface);text-align:left;min-width:0}
+.link-pick button[aria-pressed=true]{background:var(--accent);border-color:var(--accent-strong);color:var(--on-accent)}
+.link-pick .lp-name{font-weight:750;font-size:.88rem;line-height:1.25;overflow-wrap:anywhere}
+.link-pick .lp-meta{font-size:.72rem;font-weight:600;opacity:.8}
+.num-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:0 10px}
+.num-step{display:flex;gap:8px}
+.num-step .input{flex:1;text-align:center;font-size:1.2rem;font-weight:800}
+#win.goal-win .win-name{font-size:clamp(1.7rem,8vw,3rem);letter-spacing:.02em}
 /* tools */
 .tools{display:grid;gap:14px;margin:8px 0 24px;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
 .tools .wide{grid-column:1/-1}
@@ -302,6 +385,7 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
   <button data-view="day" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="8" y="13" width="4" height="4" rx="1" fill="currentColor"/></svg><span>Day</span></button>
   <button data-view="week"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 5v15M12 5v15M16 5v15" stroke="currentColor" stroke-width="1.6"/></svg><span>Week</span></button>
   <button data-view="month"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9.5h18M3 15h18M9 9.5V21M15 9.5V21" stroke="currentColor" stroke-width="1.6"/></svg><span>Month</span></button>
+  <button data-view="goals"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg><span>Goals</span></button>
   <button data-view="tools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="17" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Tools</span></button>
  </nav>
  <button id="theme-btn" class="icon-btn" aria-label="Change theme"></button>
@@ -328,10 +412,12 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
    <button class="add-row" id="add-row" data-add><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>Add task</button>
   </section>
   <button class="finish-btn" id="finish-day" data-finish hidden><span class="fb-main">Finish day</span><span class="fb-sub">See your mission tier</span></button>
+  <section class="panel gpanel" id="day-goals" aria-label="Goals"></section>
   <details class="notes-box"><summary>Week notes</summary><textarea class="input" data-notes rows="4" maxlength="6000" placeholder="What went well? What would help next week?" aria-label="Week notes"></textarea></details>
  </section>
  <section id="view-week" class="view" aria-label="Week" hidden></section>
  <section id="view-month" class="view" aria-label="Month" hidden></section>
+ <section id="view-goals" class="view" aria-label="Goals" hidden></section>
  <section id="view-tools" class="view" aria-label="Tools" hidden>
   <div class="vnav"><div class="vnav-title"><h2>Tools</h2><p>Everything stays on this device. No account and no internet needed.</p></div></div>
   <div class="tools">
@@ -379,7 +465,7 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
     </div>
     <label class="check-line" id="secure-line" hidden style="margin-top:10px"><input type="checkbox" class="cb" id="set-secure"><span>Hide from screenshots and the recent-apps preview</span></label>
     <p class="hint">With a passcode, everything Daily Missions stores on this device is encrypted, and so are your backups and HTML copies. If you forget the passcode the data cannot be recovered, so keep a backup somewhere safe.</p></section>
-   <section class="card"><h2>Backups</h2><p class="hint" style="margin:0 0 10px">A backup holds your routine, check marks, notes, and settings. Keep one somewhere safe before you switch phones or reinstall the app.</p>
+   <section class="card"><h2>Backups</h2><p class="hint" style="margin:0 0 10px">A backup holds your routine, check marks, notes, goals, and settings. Keep one somewhere safe before you switch phones or reinstall the app.</p>
     <div class="row-btns"><button class="btn primary" id="export-backup">Export backup (.json)</button><button class="btn ghost" id="import-backup">Restore backup</button><button class="btn ghost" id="save-html">Save HTML copy</button><button class="btn ghost" id="export-plain" hidden>Export unencrypted backup</button></div>
     <p class="hint">Restore also reads backups from the older Morning Missions tracker. The HTML copy is the whole planner with your data inside it.</p></section>
    <section class="card"><h2>Weekly records</h2><p class="hint" style="margin:0 0 10px">A readable snapshot of one week, laid out like a printed schedule.</p>
@@ -429,6 +515,32 @@ legend{font-weight:700;font-size:.88rem;padding:0;margin-bottom:6px}
  </form>
  <div class="sheet-foot"><button class="btn danger" id="ts-delete" type="button">Delete</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Cancel</button><button class="btn primary" id="ts-save" type="button">Save</button></div>
 </dialog>
+<dialog id="goal-sheet" class="sheet" aria-labelledby="gs-title">
+ <div class="sheet-head"><h2 id="gs-title">New goal</h2><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div>
+ <form class="sheet-body" id="gs-form" novalidate>
+  <label class="field">Goal<input id="gs-name" class="input" maxlength="120" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" placeholder="For example: Run a 5K"></label>
+  <div class="field"><span>Aim for a rough date</span>
+   <div class="seg" role="radiogroup" aria-label="Kind of date"><label><input type="radio" name="gs-kind" value="m"><span>Month</span></label><label><input type="radio" name="gs-kind" value="s"><span>Season</span></label><label><input type="radio" name="gs-kind" value="q"><span>Quarter</span></label><label><input type="radio" name="gs-kind" value="y"><span>Year</span></label></div>
+   <select id="gs-when" class="input" aria-label="Rough date"></select>
+   <p class="hint" id="gs-when-hint" style="margin:0"></p>
+  </div>
+  <p class="hint" style="margin:14px 0 0">Measure progress with any mix of these. The goal's progress is the average of the parts you turn on.</p>
+  <div class="gs-part"><label class="check-line"><input type="checkbox" class="cb" id="gs-use-steps"><span>Milestone steps</span></label>
+   <div class="gs-box" id="gs-steps-box"><ol class="steps-edit" id="gs-steps"></ol><button type="button" class="btn ghost sm" id="gs-add-step">Add step</button></div></div>
+  <div class="gs-part"><label class="check-line"><input type="checkbox" class="cb" id="gs-use-links"><span>Linked daily tasks</span></label>
+   <div class="gs-box" id="gs-links-box"><p class="hint" style="margin:0 0 8px">Every check-off of these tasks counts toward the goal.</p><div class="link-pick" id="gs-links"></div>
+    <label class="field" style="margin:0">Check-offs to aim for<input id="gs-target" class="input" type="number" inputmode="numeric" min="1" max="100000" step="1" placeholder="For example: 40"></label><p class="hint" id="gs-links-hint"></p></div></div>
+  <div class="gs-part"><label class="check-line"><input type="checkbox" class="cb" id="gs-use-num"><span>A number you update</span></label>
+   <div class="gs-box num-grid" id="gs-num-box"><label class="field">Start<input id="gs-ns" class="input" type="number" step="any" inputmode="decimal" placeholder="0"></label><label class="field">Now<input id="gs-nv" class="input" type="number" step="any" inputmode="decimal" placeholder="Same as start"></label><label class="field">Target<input id="gs-nt" class="input" type="number" step="any" inputmode="decimal" placeholder="100"></label><label class="field">Unit<input id="gs-nu" class="input" maxlength="16" autocomplete="off" placeholder="miles, lb, $"></label></div></div>
+  <label class="check-line" id="gs-done-line" style="margin-top:12px"><input type="checkbox" class="cb" id="gs-done"><span>I have achieved this goal</span></label>
+  <p class="error" id="gs-error" role="alert"></p>
+ </form>
+ <div class="sheet-foot"><button class="btn danger" id="gs-delete" type="button">Delete</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Cancel</button><button class="btn primary" id="gs-save" type="button">Save</button></div>
+</dialog>
+<dialog id="num-dialog" aria-labelledby="num-title"><div class="sheet-head"><h2 id="num-title">Update progress</h2></div><form class="sheet-body" id="num-form" novalidate><p id="num-body"></p>
+ <div class="field"><label for="num-val">New value</label><div class="num-step"><button type="button" class="nb" data-nstep="-1" aria-label="Minus 1">&minus;1</button><input id="num-val" class="input" type="number" step="any" inputmode="decimal"><button type="button" class="nb" data-nstep="1" aria-label="Plus 1">+1</button></div></div>
+ <p class="error" id="num-error" role="alert"></p><button type="submit" hidden tabindex="-1"></button></form>
+ <div class="sheet-foot"><span class="spacer"></span><button class="btn ghost" id="num-cancel" type="button">Cancel</button><button class="btn primary" id="num-ok" type="button">Save</button></div></dialog>
 <dialog id="record-dialog" class="sheet wide" aria-labelledby="rec-title"><div class="sheet-head"><h2 id="rec-title">Weekly record</h2><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div><div class="sheet-body"><iframe id="rec-frame" title="Weekly record preview" sandbox=""></iframe></div><div class="sheet-foot"><span class="spacer"></span><button class="btn ghost" id="rec-download">Download</button><button class="btn primary" id="rec-print">Print / save PDF</button></div></dialog>
 <input type="file" id="backup-file" accept=".json,application/json,text/plain" hidden>
 <script type="application/json" id="initial-state">null</script>
@@ -448,7 +560,7 @@ const $=id=>document.getElementById(id);
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const SHORT=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const LET=['M','T','W','T','F','S','S'];
-const EPOCH='2000-01-01',IDRE=/^[a-z0-9]{1,12}$/;
+const EPOCH='2000-01-01',IDRE=/^[a-z0-9]{1,12}$/,BYRE=/^\d{4}(-(0[1-9]|1[0-2]|S[1-4]|Q[1-4]))?$/;
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const parse=s=>{const p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2],12);};
@@ -469,7 +581,7 @@ const dict=()=>Object.create(null);
 const BAD1=/[\u0000-\u001F\u007F-\u009F\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,BADML=/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
 const clean1=(x,max)=>String(x).replace(BAD1,'').trim().slice(0,max);
 const cleanML=(x,max)=>String(x).replace(BADML,'').slice(0,max);
-const LIM={tasks:1000,vers:400,allVers:20000,days:40000,perDay:1100,once:60,notes:3000,months:1200,seq:1e12};
+const LIM={tasks:1000,vers:400,allVers:20000,days:40000,perDay:1100,once:60,notes:3000,months:1200,seq:1e12,goals:300,steps:50,links:50};
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
 const fmtD=(s,o)=>parse(s).toLocaleDateString(undefined,o);
 const longDate=s=>fmtD(s,{month:'short',day:'numeric',year:'numeric'});
@@ -482,7 +594,7 @@ const OPT={theme:['auto','light','dark'],clock:[12,24],keep:[1,3,6,12,24,0],cap:
 
 /* ---------- data ---------- */
 function fresh(){
- const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:dict(),days:dict(),notes:dict(),scores:dict()};
+ const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:dict(),days:dict(),notes:dict(),scores:dict(),goals:dict()};
  const MWF=21,TTH=10,WK=31;
  [['06:00','06:15','Water, pray, laundry',MWF],['06:00','06:15','Water, pray, workout',TTH],['06:15','06:35','Yoga',MWF],['06:15','06:35','Workout',TTH],['06:35','06:50','Meditation',MWF],['06:35','06:50','Yoga & meditation',TTH],['06:50','07:00','Shower',WK],['07:00','07:10','Flip laundry',MWF],['07:00','07:10','Cool down',TTH],['07:10','07:20','Plan for the day',WK],['07:20','07:45','Meds & breakfast',WK],['07:45','08:00','Coffee',WK],['08:00','08:20','Journal & get laundry',MWF],['08:00','08:20','Journal',TTH],['08:20','09:20','Study',WK],['09:20','09:35','Walk down',WK],['09:35','10:00','Call family',WK],['10:00','10:30','Group',WK]]
  .forEach((r,i)=>{s.tasks[(s.seq++).toString(36)]={o:(i+1)*1024,h:[{f:EPOCH,t:r[2],s:toMin(r[0]),e:toMin(r[1]),d:r[3]}]};});
@@ -492,7 +604,7 @@ function validate(raw){
  if(!isObj(raw))throw Error('This is not a Daily Missions backup.');
  if(raw.schema===2)return migrate2(raw);
  if(raw.v!==3)throw Error('This is not a Daily Missions backup.');
- const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:dict(),days:dict(),notes:dict(),scores:dict()};
+ const s={v:3,name:'',seq:0,since:today(),pruned:null,set:Object.assign({},DEF),tasks:dict(),days:dict(),notes:dict(),scores:dict(),goals:dict()};
  if(typeof raw.name==='string')s.name=clean1(raw.name,60);
  if(isDate(raw.since))s.since=raw.since;
  if(raw.pruned!=null){if(!isDate(raw.pruned))throw Error('Invalid archive date.');s.pruned=raw.pruned;}
@@ -531,6 +643,21 @@ function validate(raw){
  }
  if(isObj(raw.notes)){const ks=Object.keys(raw.notes);if(ks.length>LIM.notes)throw Error('The backup has too many notes.');for(const k of ks){const v=raw.notes[k];if(isDate(k)&&monday(k)===k&&typeof v==='string'){const t=cleanML(v,6000);if(t)s.notes[k]=t;}}}
  if(isObj(raw.scores)){const ks=Object.keys(raw.scores);if(ks.length>LIM.months)throw Error('The backup has too many scores.');for(const k of ks){const v=raw.scores[k];if(/^\d{4}-\d{2}$/.test(k)&&typeof v==='string'&&/^[0-9/,]*$/.test(v)&&v.length<=400)s.scores[k]=v;}}
+ if(raw.goals!=null){
+  if(!isObj(raw.goals))throw Error('The goals in the backup are damaged.');
+  const gk=Object.keys(raw.goals);if(gk.length>LIM.goals)throw Error('The backup has too many goals.');
+  const okN=x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=1e12;
+  for(const id of gk){
+   const g=raw.goals[id],t=isObj(g)&&typeof g.t==='string'?clean1(g.t,120):'';
+   if(!IDRE.test(id)||!t||typeof g.by!=='string'||!BYRE.test(g.by)||!isDate(g.c))throw Error('A goal in the backup is damaged.');
+   const o={t,by:g.by,c:g.c};
+   if(Array.isArray(g.ms)){if(g.ms.length>LIM.steps)throw Error('A goal in the backup has too many steps.');const ms=[];for(const x of g.ms){const st=isObj(x)&&typeof x.t==='string'?clean1(x.t,120):'';if(st)ms.push(x.c===1?{t:st,c:1}:{t:st});}if(ms.length)o.ms=ms;}
+   if(Array.isArray(g.lk)&&Number.isInteger(g.lt)&&g.lt>=1&&g.lt<=100000){const lk=Array.from(new Set(g.lk.slice(0,LIM.links*2).filter(x=>typeof x==='string'&&IDRE.test(x)))).slice(0,LIM.links);if(lk.length){o.lk=lk;o.lt=g.lt;if(Number.isInteger(g.lb)&&g.lb>0&&g.lb<=1e7)o.lb=g.lb;}}
+   if(okN(g.nt)){const ns=okN(g.ns)?g.ns:0,nv=okN(g.nv)?g.nv:ns;if(g.nt!==ns){o.ns=ns;o.nv=nv;o.nt=g.nt;const nu=typeof g.nu==='string'?clean1(g.nu,16):'';if(nu)o.nu=nu;}}
+   if(isDate(g.d))o.d=g.d;if(g.m===1)o.m=1;
+   s.goals[id]=o;seen(id);
+  }
+ }
  if(raw.seq!=null&&!(Number.isInteger(raw.seq)&&raw.seq>=0&&raw.seq<=LIM.seq))throw Error('The backup is damaged.');
  s.seq=Math.max(raw.seq||0,maxId+1);if(!(s.seq<=LIM.seq))throw Error('The backup is damaged.');
  return s;
@@ -770,6 +897,8 @@ function planPrune(){
 function archive(cut){
  const start=detailStart(),keep=state.set.old==='score';
  const score=d=>{if(keep&&d>=state.since){const s=stats(d);if(s.total)putScore(d,s);}};
+ // Goals keep the check-offs they counted from the days being archived.
+ for(const id in state.goals){const g=state.goals[id];if(g.lk){const n=gLinkCount(g,g.c,cut);if(n)g.lb=Math.min(1e7,(g.lb||0)+n);}}
  for(let d=start;d<cut;d=addDays(d,1)){score(d);delete state.days[d];}
  for(const k of Object.keys(state.days))if(k<cut){score(k);delete state.days[k];}
  for(const k of Object.keys(state.notes))if(addDays(k,6)<cut)delete state.notes[k];
@@ -795,7 +924,7 @@ function doArchive(p,auto){
 }
 
 /* ---------- ui state ---------- */
-const ui={view:'day',date:today(),month:today().slice(0,7)};
+const ui={view:'day',date:today(),month:today().slice(0,7),openSteps:new Set(),wonOpen:false};
 let undoSnap=null,toastTimer=0;
 function snapshot(){undoSnap=JSON.stringify(state);}
 function undo(){if(!undoSnap||locked)return;try{state=validate(JSON.parse(undoSnap));}catch(e){state=JSON.parse(undoSnap);}undoSnap=null;save();render();toast('Undone.');}
@@ -852,9 +981,9 @@ function renderStrip(){
  for(let i=0;i<7;i++){const d=addDays(ws,i),s=stats(d);h+='<button class="dchip'+(d===ui.date?' sel':'')+(d===t?' today':'')+'" data-goto="'+d+'"'+(d===ui.date?' aria-current="true"':'')+' aria-label="'+DAYS[i]+', '+esc(longDate(d))+'. '+(s.total?s.done+' of '+s.total+' done':'Nothing scheduled')+'"><span class="wd"><span class="full">'+SHORT[i]+'</span><span class="l">'+LET[i]+'</span></span><span class="dn">'+parse(d).getDate()+'</span><span class="bar"><i style="width:'+pct(s)+'%"></i></span></button>';}
  $('day-strip').innerHTML=h;
 }
-function rowHTML(it,i,done,now){
- const r=fmtRange(it.s,it.e);
- const meta=it.kind==='once'?'<span class="badge">This day only</span>':it.kind==='edited'?'<span class="badge">Changed this day</span>':'<span class="task-meta">'+esc(maskLabel(it.d))+'</span>';
+function rowHTML(it,i,done,now,gl){
+ const r=fmtRange(it.s,it.e),gs=gl&&gl.get(it.id);
+ const meta=(it.kind==='once'?'<span class="badge">This day only</span>':it.kind==='edited'?'<span class="badge">Changed this day</span>':'<span class="task-meta">'+esc(maskLabel(it.d))+'</span>')+(gs?'<span class="badge gbadge" title="'+esc('Counts toward: '+gs.map(g=>g.t).join(', '))+'">'+I.goal+esc(gs[0].t)+(gs.length>1?' +'+(gs.length-1):'')+'</span>':'');
  return '<li class="task'+(done?' done':'')+(now?' now':'')+'" data-id="'+it.id+'" data-i="'+i+'" data-s="'+it.s+'" data-e="'+it.e+'">'
  +'<label class="tick"><input type="checkbox" class="cb" data-check="'+it.id+'" data-date="'+ui.date+'"'+(done?' checked':'')+' aria-label="Done: '+esc(it.t)+', '+esc(r)+'"></label>'
  +'<div class="task-body"><div class="task-line"><button class="task-time" data-edit="'+it.id+'" data-focus="time" aria-label="Change time for '+esc(it.t)+', now '+esc(r)+'">'+esc(r)+'</button><span class="badge now-tag">Now</span>'+meta+'</div>'
@@ -865,13 +994,13 @@ function renderList(){
  const d=ui.date,list=$('day-list'),arch=archived(d);
  $('sort-time').hidden=$('add-top').hidden=$('add-row').hidden=arch;
  if(arch){const sc=getScore(d);$('day-count').textContent='';list.innerHTML='<li class="empty">This day was archived by your storage settings.<br>'+(sc?'<strong>'+sc.done+' of '+sc.total+'</strong> objectives were done.':'No score was kept.')+'</li>';return;}
- const its=items(d),c=checks(d),isT=d===today(),n=nowMin();
+ const its=items(d),c=checks(d),isT=d===today(),n=nowMin(),gl=linkedGoals();
  $('day-count').textContent=its.length?its.length+(its.length===1?' task':' tasks'):'';
  $('sort-time').hidden=its.length<2;
- list.innerHTML=its.length?its.map((it,i)=>rowHTML(it,i,c.has(it.id),isT&&n>=it.s&&n<it.e)).join(''):'<li class="empty"><strong>Rest day.</strong><br>Nothing is scheduled for this '+DAYS[wd(d)]+'.'+(isPre(d)?'':' Add a task if you want one.')+'</li>';
+ list.innerHTML=its.length?its.map((it,i)=>rowHTML(it,i,c.has(it.id),isT&&n>=it.s&&n<it.e,gl)).join(''):'<li class="empty"><strong>Rest day.</strong><br>Nothing is scheduled for this '+DAYS[wd(d)]+'.'+(isPre(d)?'':' Add a task if you want one.')+'</li>';
 }
 function setNotes(){const ws=monday(ui.date),v=state.notes[ws]||'';document.querySelectorAll('[data-notes]').forEach(t=>{if(document.activeElement!==t)t.value=v;t.disabled=archived(addDays(ws,6));});}
-function renderDay(){renderHero();renderStrip();renderList();setNotes();}
+function renderDay(){renderHero();renderStrip();renderList();renderDayGoals();setNotes();}
 function renderWeek(){
  const ws=monday(ui.date),t=today(),wst=weekStats(ws);let cols='';
  for(let i=0;i<7;i++){
@@ -894,7 +1023,7 @@ function streakFrom(d){let n=0;const s0=stats(d);if(!(s0.total&&s0.done===s0.tot
 function renderMonth(){
  const p=ui.month.split('-').map(Number),first=ui.month+'-01',last=iso(new Date(p[0],p[1],0,12)),start=monday(first),end=addDays(monday(last),6),t=today();
  let cells=LET.map((l,i)=>'<div class="mhead" aria-hidden="true">'+SHORT[i].slice(0,2)+'</div>').join('');
- let sd=0,st=0,perfect=0,tracked=0,run=0,best=0;
+ let sd=0,st=0,perfect=0,tracked=0,run=0,best=0;const marks=monthMarks(start,end);
  for(let d=start;d<=end;d=addDays(d,1)){
   const s=stats(d),inM=d.slice(0,7)===ui.month,fut=d>t;
   let cls='mcell'+(inM?'':' out')+(d===t?' today':'')+(d===ui.date?' sel':''),h=0,lab='',aria=DAYS[wd(d)]+', '+longDate(d)+': ';
@@ -903,15 +1032,17 @@ function renderMonth(){
   else if(fut){cls+=' future';aria+=s.total+' scheduled';}
   else{h=s.done/s.total;lab=pct(s)+'%';aria+=s.done+' of '+s.total+' done';}
   if(inM&&!fut&&!s.pre&&!(s.arch&&s.none)&&s.total){tracked++;sd+=s.done;st+=s.total;if(s.done===s.total){perfect++;run++;if(run>best)best=run;}else run=0;}
-  cells+='<button class="'+cls+'" style="--h:'+h.toFixed(2)+'" data-goto="'+d+'" aria-label="'+esc(aria)+'"><span class="mnum">'+parse(d).getDate()+'</span><span class="mpct">'+lab+'</span></button>';
+  const mk=marks.get(d);let mh='';if(mk){if(mk.won.length){mh+=I.trophy;aria+='. Goal achieved: '+mk.won.join(', ');}if(mk.due.length){mh+=I.flag;aria+='. Goal date: '+mk.due.join(', ');}}
+  cells+='<button class="'+cls+'" style="--h:'+h.toFixed(2)+'" data-goto="'+d+'" aria-label="'+esc(aria)+'"><span class="mnum">'+parse(d).getDate()+'</span>'+(mh?'<span class="mmark" aria-hidden="true">'+mh+'</span>':'')+'<span class="mpct">'+lab+'</span></button>';
  }
  let weeks='';
  for(let ws=start;ws<=end&&ws<=t;ws=addDays(ws,7)){if(addDays(ws,6)<state.since&&!getScore(addDays(ws,6)))continue;const w=weekStats(ws);weeks+='<li><span class="wk-name">'+esc(weekRange(ws))+'</span><span class="wk-pct">'+(w.total?pct(w)+'%':'–')+'</span><button class="btn sm ghost" data-record="'+ws+'">Record</button></li>';}
  const mName=parse(first).toLocaleDateString(undefined,{month:'long',year:'numeric'}),thisM=ui.month===t.slice(0,7);
  $('view-month').innerHTML='<div class="vnav"><button class="nb" data-mstep="-1" aria-label="Previous month">'+I.left+'</button><div class="vnav-title"><h2>'+esc(mName)+'</h2><p>Tap a day to open it.</p></div><button class="nb" data-mstep="1" aria-label="Next month">'+I.right+'</button></div>'
  +(thisM?'':'<div class="vnav-actions"><button class="btn sm ghost" data-mtoday>This month</button></div>')
- +'<div class="mgrid">'+cells+'</div><p class="legend"><i style="opacity:.2"></i><i style="opacity:.6"></i><i></i><span>more done</span><span>· dashed = no record</span></p>'
+ +'<div class="mgrid">'+cells+'</div><p class="legend"><i style="opacity:.2"></i><i style="opacity:.6"></i><i></i><span>more done</span><span>· dashed = no record</span>'+(marks.size?'<span>· '+I.flag+' goal date</span><span>'+I.trophy+' goal achieved</span>':'')+'</p>'
  +'<div class="mstats"><div class="mstat"><strong>'+(st?Math.round(sd/st*100)+'%':'–')+'</strong><span>Done this month</span></div><div class="mstat"><strong>'+perfect+'</strong><span>Perfect days</span></div><div class="mstat"><strong>'+best+'</strong><span>Best run this month</span></div><div class="mstat"><strong>'+streakFrom(t)+'</strong><span>Current streak</span></div></div>'
+ +monthGoalsHTML(first,last)
  +(weeks?'<section class="card notes-card"><h2>Weekly records</h2><ul class="weeks">'+weeks+'</ul></section>':'');
 }
 function fmtBytes(b){return b<1024?b+' bytes':b<1048576?(b/1024).toFixed(b<10240?1:0)+' KB':(b/1048576).toFixed(1)+' MB';}
@@ -929,9 +1060,9 @@ function renderTools(){
 }
 function render(){
  applyTheme();
- for(const v of ['day','week','month','tools'])$('view-'+v).hidden=ui.view!==v;
+ for(const v of ['day','week','month','goals','tools'])$('view-'+v).hidden=ui.view!==v;
  document.querySelectorAll('.tabs [data-view]').forEach(b=>{if(b.dataset.view===ui.view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
- if(ui.view==='day')renderDay();else if(ui.view==='week')renderWeek();else if(ui.view==='month')renderMonth();else renderTools();
+ if(ui.view==='day')renderDay();else if(ui.view==='week')renderWeek();else if(ui.view==='month')renderMonth();else if(ui.view==='goals')renderGoals();else renderTools();
  renderBackdrop();
 }
 function show(view){if(view==='month'&&ui.view!=='month')ui.month=ui.date.slice(0,7);ui.view=view;render();window.scrollTo(0,0);}
@@ -1058,6 +1189,275 @@ $('ts-suggest').addEventListener('pointerdown',e=>e.preventDefault());
 $('ts-suggest').addEventListener('click',e=>{const li=e.target.closest('[data-sg]');if(li)pickSuggest(+li.dataset.sg);});
 $('task-sheet').addEventListener('close',()=>{closeSuggest();edit&&(edit.catalog=[]);});
 
+/* ---------- goals: grouped by a rough date, measured by steps, linked tasks, and a number ---------- */
+Object.assign(I,{
+ goal:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
+ trophy:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0z" fill="currentColor"/><path d="M7 6H4.5a2.6 2.6 0 0 0 3 3.8M17 6h2.5a2.6 2.6 0 0 1-3 3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 13.5V17M8 20h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+ flag:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4h11l-2.5 4L17 12H6z" fill="currentColor"/></svg>',
+ steps:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l2 2 3-3.5M4 15l2 2 3-3.5M12 8h8M12 16h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ repeat:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 11a7.5 7.5 0 0 1 13-4.2M19.5 13a7.5 7.5 0 0 1-13 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18.5 3v4.5H14M5.5 21v-4.5H10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ num:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 6h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+ x:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'
+});
+// A rough date is a year "2027", a month "2027-06", a season "2027-S1" (1 spring, 2 summer, 3 fall, 4 winter into the next year) or a quarter "2027-Q2".
+const SEASONS=['Spring','Summer','Fall','Winter'],SEASON_SPAN=['Mar to May','Jun to Aug','Sep to Nov','Dec to Feb'],Q_SPAN=['Jan to Mar','Apr to Jun','Jul to Sep','Oct to Dec'];
+const byKind=by=>by.length===4?'y':by[5]==='S'?'s':by[5]==='Q'?'q':'m';
+function byPeriod(by){
+ const y=+by.slice(0,4),k=byKind(by);
+ if(k==='y')return {start:y+'-01-01',end:y+'-12-31'};
+ if(k==='m'){const m=+by.slice(5);return {start:by+'-01',end:iso(new Date(y,m,0,12))};}
+ const n=+by.slice(6),m=k==='q'?n*3-2:[3,6,9,12][n-1];
+ return {start:y+'-'+pad(m)+'-01',end:iso(new Date(y,m+2,0,12))};
+}
+function byName(by){
+ const k=byKind(by),y=+by.slice(0,4);
+ if(k==='y')return 'By end of '+y;
+ if(k==='m')return 'By '+fmtD(by+'-01',{month:'long',year:'numeric'});
+ const n=+by.slice(6);
+ if(k==='q')return 'Q'+n+' '+y;
+ return SEASONS[n-1]+' '+(n===4?y+'/'+String(y+1).slice(2):y);
+}
+function byOption(by){const k=byKind(by),n=+by.slice(6);return k==='m'?fmtD(by+'-01',{month:'long',year:'numeric'}):k==='y'?by+' (whole year)':byName(by)+' ('+(k==='q'?Q_SPAN:SEASON_SPAN)[n-1]+')';}
+function byChoices(kind){
+ const t=today(),y=+t.slice(0,4),m=+t.slice(5,7),out=[];
+ if(kind==='m')for(let i=0;i<60;i++)out.push(iso(new Date(y,m-1+i,1,12)).slice(0,7));
+ else if(kind==='y')for(let i=0;i<10;i++)out.push(String(y+i));
+ else{let yy=y,n;if(kind==='q')n=Math.ceil(m/3);else if(m<3){n=4;yy=y-1;}else n=m===12?4:Math.floor(m/3);
+  for(let i=0;i<16;i++){out.push(yy+'-'+(kind==='q'?'Q':'S')+n);if(++n>4){n=1;yy++;}}}
+ return out;
+}
+const defaultBy=kind=>{const t=addDays(today(),45),ch=byChoices(kind);return ch.find(b=>byPeriod(b).end>=t)||ch[0];};
+const spanText=d=>d<63?Math.round(d/7)+' weeks':d<700?Math.round(d/30.44)+' months':Math.round(d/365.25)+' years';
+function timeLeft(by){
+ const d=daysBetween(today(),byPeriod(by).end);
+ if(d<0)return {txt:'Time is up',past:true};
+ if(d===0)return {txt:'Last day'};
+ return {txt:d<14?d+' day'+(d===1?'':'s')+' left':'~'+spanText(d)+' left'};
+}
+function spare(g){const d=daysBetween(g.d,byPeriod(g.by).end);return d<0?'':d<14?', right on time':', '+spanText(d)+' early';}
+const fmtNum=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+const CUR=/^[$\u00a2\u00a3\u00a5\u20ac\u20b9\u20a9\u20bd]$/;
+// A number with the goal's unit: "$250" for a currency symbol, "3.1 miles" otherwise.
+const withUnit=(g,n)=>g.nu&&CUR.test(g.nu)?(n<0?'-':'')+g.nu+fmtNum(Math.abs(n)):fmtNum(n)+(g.nu?' '+g.nu:'');
+// Check-offs of a goal's linked tasks on days from `from` up to (not including) `to`.
+function gLinkCount(g,from,to){
+ if(!g.lk)return 0;const ids=new Set(g.lk);let n=0;
+ for(const k in state.days){if(k<from||(to&&k>=to))continue;const c=state.days[k].c;if(c)for(const id of c)if(ids.has(id))n++;}
+ return n;
+}
+function gProgress(g){
+ const st=g.ms&&g.ms.length?{done:g.ms.filter(x=>x.c).length,total:g.ms.length}:null;
+ const lk=g.lk&&g.lk.length&&g.lt?{done:(g.lb||0)+gLinkCount(g,g.c),total:g.lt}:null;
+ let nm=null;if(g.nt!=null){const s=g.ns||0,span=g.nt-s;nm={f:span?Math.max(0,Math.min(1,(g.nv-s)/span)):1};}
+ const parts=[];if(st)parts.push(st.done/st.total);if(lk)parts.push(Math.min(1,lk.done/lk.total));if(nm)parts.push(nm.f);
+ const complete=parts.length>0&&parts.every(f=>f>=1),avg=parts.length?parts.reduce((a,b)=>a+b,0)/parts.length:0;
+ return {p:complete||g.m?100:Math.min(99,Math.round(avg*100)),st,lk,nm,parts:parts.length,complete};
+}
+// Marks goals achieved when every part is complete, and reopens them if a part is undone. Returns newly achieved ids.
+function checkGoals(){
+ const won=[];
+ for(const id in state.goals){const g=state.goals[id],done=!!g.m||gProgress(g).complete;if(done&&!g.d){g.d=today();won.push(id);}else if(!done&&g.d)delete g.d;}
+ return won;
+}
+// Active goals sorted by their rough date (soonest first), then achieved ones.
+function goalsSorted(){
+ const a=[];for(const id in state.goals){const g=state.goals[id];a.push({id,g,pe:byPeriod(g.by)});}
+ const c=(x,y)=>x<y?-1:x>y?1:0;
+ return a.sort((x,y)=>c(x.pe.end,y.pe.end)||c(y.pe.start,x.pe.start)||c(x.g.c,y.g.c)||parseInt(x.id,36)-parseInt(y.id,36));
+}
+function linkedGoals(){const m=new Map();for(const id in state.goals){const g=state.goals[id];if(g.d||!g.lk)continue;for(const t of g.lk){if(!m.has(t))m.set(t,[]);m.get(t).push(g);}}return m;}
+function numChip(id,g){return '<button class="gchip gnum" data-gnum="'+id+'" aria-label="Update '+esc(g.t)+', now '+esc(withUnit(g,g.nv))+'">'+I.num+esc(g.nu&&!CUR.test(g.nu)?fmtNum(g.nv)+' / '+fmtNum(g.nt)+' '+g.nu:withUnit(g,g.nv)+' / '+withUnit(g,g.nt))+'<span class="gupd">Update</span></button>';}
+function partsHTML(id,g,pr){
+ let h='';
+ if(pr.st)h+='<span class="gchip">'+I.steps+pr.st.done+' of '+pr.st.total+' step'+(pr.st.total===1?'':'s')+'</span>';
+ if(pr.lk){const td=gLinkCount(g,today(),addDays(today(),1));h+='<span class="gchip">'+I.repeat+fmtNum(pr.lk.done)+' of '+fmtNum(pr.lk.total)+' check-offs'+(td?' <b>+'+td+' today</b>':'')+'</span>';}
+ if(pr.nm)h+=numChip(id,g);
+ return h;
+}
+function nextStepHTML(id,g){if(!g.ms||g.d)return '';const i=g.ms.findIndex(x=>!x.c);if(i<0)return '';return '<label class="gnext"><input type="checkbox" class="cb" data-gstep="'+id+'" data-si="'+i+'" aria-label="Done: '+esc(g.ms[i].t)+'"><span><small>Next step</small>'+esc(g.ms[i].t)+'</span></label>';}
+function stepsHTML(id,g){if(!g.ms||g.ms.length<2)return '';return '<details class="gsteps" data-gsteps="'+id+'"'+(ui.openSteps.has(id)?' open':'')+'><summary>All steps</summary><ul>'+g.ms.map((x,i)=>'<li><label><input type="checkbox" class="cb" data-gstep="'+id+'" data-si="'+i+'"'+(x.c?' checked':'')+'><span>'+esc(x.t)+'</span></label></li>').join('')+'</ul></details>';}
+function goalCard(x){
+ const {id,g}=x,pr=gProgress(g);
+ return '<article class="goal" data-goal="'+id+'"><div class="goal-top"><button class="goal-name" data-goal-open="'+id+'">'+esc(g.t)+'</button><span class="goal-pct">'+pr.p+'%</span></div>'
+ +'<span class="bar" role="img" aria-label="'+pr.p+' percent done"><i style="width:'+pr.p+'%"></i></span>'
+ +(pr.parts?'<div class="goal-parts">'+partsHTML(id,g,pr)+'</div>':'<p class="hint" style="margin:0">Tap the goal to add steps, linked tasks, or a number, or to mark it achieved.</p>')
+ +nextStepHTML(id,g)+stepsHTML(id,g)+'</article>';
+}
+const GOAL_PITCH='<li><b>Steps</b> you tick off, like "Buy running shoes".</li><li><b>Linked tasks</b>, where every check-off of a daily task counts, like 40 workouts.</li><li><b>A number</b> you update, like miles run, pages read, or money saved.</li>';
+function renderGoals(){
+ const all=goalsSorted(),act=all.filter(x=>!x.g.d),won=all.filter(x=>x.g.d).sort((a,b)=>a.g.d<b.g.d?1:a.g.d>b.g.d?-1:0);
+ let h='<div class="vnav"><div class="vnav-title"><h2>Goals</h2><p>Work toward something bigger, one day at a time.</p></div></div><div class="vnav-actions"><button class="btn primary" data-goal-new="">'+I.plus+'New goal</button></div>';
+ if(!all.length)h+='<section class="card gempty"><h2>Set a goal to work toward</h2><p>Give each goal a rough date: a month, a season, a quarter, or a year. Goals with the same date are grouped together, soonest first, with how much time is left.</p><p>Measure progress with any mix of:</p><ul>'+GOAL_PITCH+'</ul><button class="btn primary" data-goal-new="">New goal</button></section>';
+ for(let i=0;i<act.length;){
+  const by=act[i].g.by,grp=[];while(i<act.length&&act[i].g.by===by)grp.push(act[i++]);const tl=timeLeft(by);
+  h+='<section class="panel ggroup" aria-label="'+esc(byName(by))+'"><div class="panel-head"><h2>'+esc(byName(by))+'<span'+(tl.past?' class="late"':'')+'>'+esc(tl.txt)+'</span></h2><div class="panel-actions"><button class="hbtn" data-goal-new="'+by+'" aria-label="Add a goal for '+esc(byName(by))+'">'+I.plus+'<span>Add</span></button></div></div>'
+  +(tl.past?'<p class="glate">The date for this group has passed. Keep going, or open a goal to pick a new date.</p>':'')
+  +'<div class="glist">'+grp.map(goalCard).join('')+'</div></section>';
+ }
+ if(won.length)h+='<details class="card gwon-card" id="goals-won"'+(ui.wonOpen?' open':'')+'><summary><span>Achieved</span><b>'+won.length+'</b></summary><ul class="gwon">'+won.map(x=>'<li>'+I.trophy+'<div><button class="goal-name" data-goal-open="'+x.id+'">'+esc(x.g.t)+'</button><span>'+esc(byName(x.g.by)+' · achieved '+longDate(x.g.d)+spare(x.g))+'</span></div></li>').join('')+'</ul></details>';
+ $('view-goals').innerHTML=h;
+}
+// The Day screen shows goals fed by that day's tasks first, then the soonest.
+function renderDayGoals(){
+ const box=$('day-goals'),act=goalsSorted().filter(x=>!x.g.d),d=ui.date;
+ if(!act.length){box.className='gpanel';box.innerHTML='<div class="gpitch">'+I.goal+'<p><b>Work toward something bigger.</b> Set a goal with a rough date, and link tasks so every check-off counts.</p><button class="btn sm ghost" data-goal-new="">New goal</button></div>';return;}
+ const its=items(d),c=checks(d),on=new Set(its.map(i=>i.id)),fed=x=>x.g.lk&&x.g.lk.some(id=>on.has(id))?0:1;
+ const pick=act.slice().sort((a,b)=>fed(a)-fed(b)).slice(0,3);
+ const row=x=>{const {id,g}=x,pr=gProgress(g),tl=timeLeft(g.by);let extra='';
+  if(g.lk){const mine=its.filter(i=>g.lk.indexOf(i.id)>=0);if(mine.length){const n=mine.filter(i=>c.has(i.id)).length;extra+='<span class="gd-today">'+I.repeat.replace('<svg','<svg style="width:13px;height:13px;vertical-align:-2px"')+' '+n+' of '+mine.length+' linked task'+(mine.length===1?'':'s')+' done '+(d===today()?'today':'this day')+'</span>';}}
+  if(pr.nm)extra+='<div class="goal-parts">'+numChip(id,g)+'</div>';
+  return '<li class="gd"><div class="gd-top"><button class="gd-main" data-goal-open="'+id+'"><span class="gd-name">'+esc(g.t)+'</span><span class="gd-when'+(tl.past?' late':'')+'">'+esc(byName(g.by)+' · '+tl.txt)+'</span></button><span class="gd-pct">'+pr.p+'%</span></div><span class="bar"><i style="width:'+pr.p+'%"></i></span>'+extra+nextStepHTML(id,g)+'</li>';};
+ box.className='panel gpanel';
+ box.innerHTML='<div class="panel-head"><h2>Goals<span>'+act.length+' active</span></h2><div class="panel-actions"><button class="hbtn" data-view="goals">All goals</button></div></div><ul class="gday">'+pick.map(row).join('')+'</ul>';
+}
+// Month view: flags on goal dates and trophies on days a goal was achieved.
+function monthMarks(start,end){
+ const m=new Map(),add=(d,k,v)=>{if(d<start||d>end)return;if(!m.has(d))m.set(d,{due:[],won:[]});const o=m.get(d)[k];if(o.indexOf(v)<0)o.push(v);};
+ for(const id in state.goals){const g=state.goals[id];if(g.d)add(g.d,'won',g.t);else add(byPeriod(g.by).end,'due',byName(g.by));}
+ return m;
+}
+function monthGoalsHTML(first,last){
+ const all=goalsSorted();
+ if(!all.length)return '<section class="card notes-card mgoals"><h2>Goals</h2><p class="hint" style="margin:0 0 10px">Set a goal with a rough date, like Spring or June, and it shows up here with a flag on its date.</p><button class="btn sm primary" data-goal-new="">New goal</button></section>';
+ const t=today(),due=all.filter(x=>!x.g.d&&x.pe.end>=first&&x.pe.end<=last),won=all.filter(x=>x.g.d&&x.g.d>=first&&x.g.d<=last),later=last>=t?all.filter(x=>!x.g.d&&x.pe.end>last).slice(0,4):[];
+ const row=x=>{const pr=gProgress(x.g);return '<li><button class="mg-name" data-goal-open="'+x.id+'"><span>'+esc(x.g.t)+'</span><small>'+esc(x.g.d?'Achieved '+longDate(x.g.d):byName(x.g.by)+' · '+timeLeft(x.g.by).txt)+'</small></button><span class="mg-pct">'+(x.g.d?I.trophy:pr.p+'%')+'</span><span class="bar"><i style="width:'+pr.p+'%"></i></span></li>';};
+ let h='';
+ if(due.length)h+='<h3>Due this month</h3><ul class="mg">'+due.map(row).join('')+'</ul>';
+ if(won.length)h+='<h3>Achieved this month</h3><ul class="mg">'+won.map(row).join('')+'</ul>';
+ if(later.length)h+='<h3>Coming up</h3><ul class="mg">'+later.map(row).join('')+'</ul>';
+ if(!h)h='<p class="hint" style="margin:0 0 10px">No goals were due or achieved this month.</p>';
+ return '<section class="card notes-card mgoals"><h2>Goals</h2>'+h+'<div class="row-btns"><button class="btn sm ghost" data-view="goals">All goals</button><button class="btn sm ghost" data-goal-new="">New goal</button></div></section>';
+}
+function refreshGoals(){if(ui.view==='goals')renderGoals();else if(ui.view==='month')renderMonth();else if(ui.view==='day'){renderDayGoals();renderList();}}
+function celebrate(ids){if(!ids.length)return;playGoal(state.goals[ids[0]]);if(ids.length>1)toast('Also achieved: '+ids.slice(1).map(i=>state.goals[i].t).join(', ')+'.');}
+// After a check mark: count it toward linked goals.
+function goalAfterCheck(date,tid,on){
+ const gs=[];for(const id in state.goals){const g=state.goals[id];if(g.lk&&g.lk.indexOf(tid)>=0)gs.push(g);}
+ if(!gs.length)return;
+ const was=gs.map(g=>!!g.d),won=checkGoals(),changed=gs.some((g,i)=>!!g.d!==was[i]);if(changed)save();
+ // Redraw the task list only when a goal opened or closed, so its badges stay right without losing focus.
+ if(ui.view==='day'){renderDayGoals();if(changed)renderList();}
+ if(won.length){celebrate(won);return;}
+ const s=stats(date);if(!on||(s.total&&s.done===s.total))return;
+ const g=gs.find(g=>!g.d&&date>=g.c);if(!g)return;const pr=gProgress(g);
+ toast('+1 toward "'+g.t+'": '+fmtNum(pr.lk.done)+' of '+fmtNum(pr.lk.total)+' check-offs.');
+}
+/* goal editor */
+let gedit=null;
+function openGoal(id,by){
+ const g=id?state.goals[id]:null;if(id&&!g)return;
+ const kind=g?byKind(g.by):by?byKind(by):'s';
+ gedit={id:g?id:null,kind,by:g?g.by:by||defaultBy(kind),c:g?g.c:today(),ms:g&&g.ms?g.ms.map(x=>({t:x.t,c:x.c?1:0})):[],lk:new Set(g&&g.lk||[])};
+ if(!gedit.ms.length)gedit.ms.push({t:'',c:0});
+ $('gs-title').textContent=g?'Edit goal':'New goal';$('gs-name').value=g?g.t:'';
+ document.querySelectorAll('input[name=gs-kind]').forEach(r=>{r.checked=r.value===kind;});
+ $('gs-use-steps').checked=!!(g&&g.ms);$('gs-use-links').checked=!!(g&&g.lk);$('gs-use-num').checked=!!(g&&g.nt!=null);
+ $('gs-target').value=g&&g.lt?String(g.lt):'';
+ const hasN=g&&g.nt!=null;$('gs-ns').value=hasN?String(g.ns||0):'';$('gs-nv').value=hasN?String(g.nv):'';$('gs-nt').value=hasN?String(g.nt):'';$('gs-nu').value=g&&g.nu||'';
+ $('gs-done').checked=!!(g&&g.d);$('gs-done-line').hidden=!g;$('gs-delete').hidden=!g;$('gs-error').textContent='';
+ gsWhen();gsSteps();gsLinks();gsShow();
+ $('goal-sheet').showModal();
+ if(!g)setTimeout(()=>{try{$('gs-name').focus();}catch(x){}},60);
+}
+function gsWhen(){
+ const ch=byChoices(gedit.kind);if(byKind(gedit.by)===gedit.kind&&ch.indexOf(gedit.by)<0)ch.unshift(gedit.by);
+ if(byKind(gedit.by)!==gedit.kind)gedit.by=defaultBy(gedit.kind);
+ $('gs-when').innerHTML=ch.map(b=>'<option value="'+b+'"'+(b===gedit.by?' selected':'')+'>'+esc(byOption(b))+'</option>').join('');
+ const pe=byPeriod(gedit.by);$('gs-when-hint').textContent='Grouped under "'+byName(gedit.by)+'". Ends '+longDate(pe.end)+' · '+timeLeft(gedit.by).txt.toLowerCase()+'.';
+}
+// Switching between month, season, quarter, and year keeps roughly the same date.
+function gsKind(k){const end=byPeriod(gedit.by).end,ch=byChoices(k);gedit.kind=k;gedit.by=ch.find(b=>byPeriod(b).end>=end)||defaultBy(k);gsWhen();}
+function gsSteps(){
+ $('gs-steps').innerHTML=gedit.ms.map((x,i)=>'<li><input type="checkbox" class="cb" data-gs-check="'+i+'"'+(x.c?' checked':'')+' aria-label="Step '+(i+1)+' done"><input class="input" data-gs-step="'+i+'" maxlength="120" value="'+esc(x.t)+'" placeholder="Step '+(i+1)+'" aria-label="Step '+(i+1)+'" enterkeyhint="next" autocomplete="off"><button type="button" class="icon-btn gs-rm" data-gs-rm="'+i+'" aria-label="Remove step '+(i+1)+'">'+I.x+'</button></li>').join('');
+ $('gs-add-step').hidden=gedit.ms.length>=LIM.steps;
+}
+function gsAddStep(after){if(gedit.ms.length>=LIM.steps)return;const i=after==null?gedit.ms.length:after+1;gedit.ms.splice(i,0,{t:'',c:0});gsSteps();const el=document.querySelector('[data-gs-step="'+i+'"]');if(el)el.focus();}
+function linkChoices(){
+ const out=[];
+ for(const id in state.tasks){const h=state.tasks[id].h,last=h[h.length-1];if(!last.d&&!gedit.lk.has(id))continue;const v=last.d?last:h.slice().reverse().find(x=>x.d)||last;out.push({id,t:v.t,s:v.s,d:last.d});}
+ for(const id of gedit.lk)if(!state.tasks[id])out.push({id,t:'A removed task',s:1e4,d:0});
+ return out.sort((a,b)=>a.s-b.s||a.t.localeCompare(b.t));
+}
+function gsLinks(){
+ const ch=linkChoices();
+ $('gs-links').innerHTML=ch.length?ch.map(c=>'<button type="button" data-glink="'+c.id+'" aria-pressed="'+(gedit.lk.has(c.id)?'true':'false')+'"><span class="lp-name">'+esc(c.t)+'</span><span class="lp-meta">'+esc(c.d?fmtTime(c.s)+' · '+maskLabel(c.d):'No longer in your routine')+'</span></button>').join(''):'<p class="hint">You have no repeating tasks yet. Add one on the Day screen first.</p>';
+ gsLinkHint();
+}
+function gsLinkHint(){
+ const g0=gedit.id&&state.goals[gedit.id],n=gedit.lk.size?(g0&&g0.lb||0)+gLinkCount({lk:Array.from(gedit.lk)},gedit.c):0;
+ $('gs-links-hint').textContent=gedit.lk.size?'Counts check-offs from '+longDate(gedit.c)+' on. So far: '+fmtNum(n)+'.':'Pick one or more tasks above.';
+}
+function gsShow(){$('gs-steps-box').hidden=!$('gs-use-steps').checked;$('gs-links-box').hidden=!$('gs-use-links').checked;$('gs-num-box').hidden=!$('gs-use-num').checked;}
+function saveGoal(){
+ const err=$('gs-error'),t=clean1($('gs-name').value,120),g0=gedit.id?state.goals[gedit.id]:null;
+ const fail=(m,el)=>{err.textContent=m;if(el)try{el.focus();}catch(x){}};
+ if(!t)return fail('Give the goal a name.',$('gs-name'));
+ if(!BYRE.test(gedit.by))return fail('Choose a rough date.');
+ if(!g0&&Object.keys(state.goals).length>=LIM.goals)return fail('You can have up to '+LIM.goals+' goals. Delete some old ones first.');
+ const g={t,by:gedit.by,c:gedit.c};
+ if($('gs-use-steps').checked){const ms=gedit.ms.map(x=>({t:clean1(x.t,120),c:x.c})).filter(x=>x.t).map(x=>x.c?{t:x.t,c:1}:{t:x.t});if(!ms.length)return fail('Add at least one step, or turn steps off.',document.querySelector('[data-gs-step]'));g.ms=ms;}
+ if($('gs-use-links').checked){
+  const lk=Array.from(gedit.lk).slice(0,LIM.links),lt=+$('gs-target').value;
+  if(!lk.length)return fail('Pick at least one task to link, or turn linked tasks off.');
+  if(!Number.isInteger(lt)||lt<1||lt>100000)return fail('Set how many check-offs to aim for, from 1 to 100,000.',$('gs-target'));
+  g.lk=lk;g.lt=lt;if(g0&&g0.lb&&g0.lk&&g0.lk.every(id=>lk.indexOf(id)>=0))g.lb=g0.lb;
+ }
+ if($('gs-use-num').checked){
+  const num=id=>{const v=$(id).value.trim();return v===''?null:+v;},ok=x=>Number.isFinite(x)&&Math.abs(x)<=1e12;
+  let ns=num('gs-ns'),nv=num('gs-nv');const nt=num('gs-nt');if(ns==null)ns=0;if(nv==null)nv=ns;
+  if(nt==null||!ok(nt)||!ok(ns)||!ok(nv))return fail('Enter numbers for the start, now, and target.',$('gs-nt'));
+  if(nt===ns)return fail('The target must be different from the start.',$('gs-nt'));
+  g.ns=ns;g.nv=nv;g.nt=nt;const nu=clean1($('gs-nu').value,16);if(nu)g.nu=nu;
+ }
+ const want=!!g0&&$('gs-done').checked,complete=gProgress(g).complete;
+ if(g0&&g0.d&&!want&&complete)return fail('Every part of this goal is complete. Change a part to reopen it.');
+ if(want&&!complete)g.m=1;
+ if(g0&&g0.d)g.d=g0.d;
+ snapshot();const id=gedit.id||nid();state.goals[id]=g;const won=checkGoals();save();
+ $('goal-sheet').close();refreshGoals();
+ if(won.length)celebrate(won);else toast(g0?'Goal saved.':'Goal added under '+byName(g.by)+'.',{label:'Undo',fn:undo});
+}
+async function deleteGoal(){
+ const id=gedit.id,g=state.goals[id];if(!g)return;
+ if(!await ask({title:'Delete goal?',body:'"'+g.t+'" and its progress will be removed. Your tasks and check marks stay as they are.',ok:'Delete',danger:true}))return;
+ snapshot();delete state.goals[id];save();$('goal-sheet').close();refreshGoals();toast('Goal deleted.',{label:'Undo',fn:undo});
+}
+let numFor=null;
+function openNum(id){
+ const g=state.goals[id];if(!g||g.nt==null)return;numFor=id;
+ $('num-title').textContent='Update '+(g.nu&&!CUR.test(g.nu)?g.nu:'progress');$('num-body').textContent=g.t+': now '+withUnit(g,g.nv)+', target '+withUnit(g,g.nt)+'.';
+ $('num-val').value=String(g.nv);$('num-error').textContent='';$('num-dialog').showModal();
+ setTimeout(()=>{try{$('num-val').focus();$('num-val').select();}catch(e){}},60);
+}
+function saveNum(){
+ const g=state.goals[numFor];if(!g)return;const raw=$('num-val').value.trim(),v=+raw;
+ if(raw===''||!Number.isFinite(v)||Math.abs(v)>1e12){$('num-error').textContent='Enter a number.';return;}
+ snapshot();g.nv=v;const won=checkGoals();save();$('num-dialog').close();refreshGoals();
+ if(won.length)celebrate(won);else toast(g.t+': '+withUnit(g,v)+' ('+gProgress(g).p+'%).',{label:'Undo',fn:undo});
+}
+$('gs-save').onclick=saveGoal;$('gs-delete').onclick=deleteGoal;
+$('gs-form').addEventListener('submit',e=>{e.preventDefault();saveGoal();});
+$('gs-add-step').onclick=()=>gsAddStep();
+$('gs-when').onchange=()=>{gedit.by=$('gs-when').value;gsWhen();};
+$('gs-form').addEventListener('change',e=>{
+ const el=e.target;
+ if(el.name==='gs-kind'){gsKind(el.value);return;}
+ if(el.matches('[data-gs-check]')){const x=gedit.ms[+el.dataset.gsCheck];if(x)x.c=el.checked?1:0;return;}
+ if(el.id==='gs-use-steps'||el.id==='gs-use-links'||el.id==='gs-use-num'){gsShow();if(el.checked){const f=el.id==='gs-use-steps'?document.querySelector('[data-gs-step]'):el.id==='gs-use-num'?$('gs-nt'):null;if(f&&!f.value)setTimeout(()=>{try{f.focus();}catch(x){}},30);}}
+});
+$('gs-form').addEventListener('input',e=>{const el=e.target;if(el.matches('[data-gs-step]')){const x=gedit.ms[+el.dataset.gsStep];if(x)x.t=el.value;}});
+$('gs-form').addEventListener('keydown',e=>{const el=e.target;if(e.key!=='Enter'||e.isComposing)return;if(el.matches('[data-gs-step]')){e.preventDefault();gsAddStep(+el.dataset.gsStep);}else if(el.tagName==='INPUT'&&el.type!=='checkbox'&&el.type!=='radio'){e.preventDefault();el.blur();}});
+$('gs-form').addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.gsRm!=null){const i=+b.dataset.gsRm;gedit.ms.splice(i,1);if(!gedit.ms.length)gedit.ms.push({t:'',c:0});gsSteps();return;}
+ if(b.dataset.glink){const id=b.dataset.glink;if(gedit.lk.has(id))gedit.lk.delete(id);else if(gedit.lk.size<LIM.links)gedit.lk.add(id);b.setAttribute('aria-pressed',gedit.lk.has(id)?'true':'false');gsLinkHint();}
+});
+$('num-form').addEventListener('submit',e=>{e.preventDefault();saveNum();});
+$('num-ok').onclick=saveNum;$('num-cancel').onclick=()=>$('num-dialog').close();
+$('num-dialog').addEventListener('click',e=>{const b=e.target.closest('[data-nstep]');if(!b)return;const v=+$('num-val').value||0;$('num-val').value=String(Math.round((v+(+b.dataset.nstep))*100)/100);});
+document.addEventListener('toggle',e=>{const d=e.target;if(!d||!d.dataset)return;if(d.dataset.gsteps){if(d.open)ui.openSteps.add(d.dataset.gsteps);else ui.openSteps.delete(d.dataset.gsteps);}else if(d.id==='goals-won')ui.wonOpen=d.open;},true);
+
 /* ---------- finish day: one tier per 10%, each with its own emblem and effects ---------- */
 const TIERS=[
  {n:'Recruit',c:'#8a9bb0',c2:'#c3cfdc',m:'Every mission starts somewhere. Back at it tomorrow.'},
@@ -1123,13 +1523,36 @@ function finishDay(){
 }
 function playWin(r){
  const T=TIERS[r.k],dlg=$('win');
- dlg.style.setProperty('--wc',T.c);
+ dlg.style.setProperty('--wc',T.c);dlg.classList.remove('goal-win');
  $('win-emblem').innerHTML=emblemSVG(r.k);
  $('win-tag').textContent='Mission tier '+(r.k+1);$('win-name').textContent=T.n;
  $('win-sub').textContent=r.done+' of '+r.total+' objectives · '+shortDate(r.date);$('win-msg').textContent=T.m;
  $('win-perfect').hidden=r.k!==10;muteIcon();
  if(!dlg.open)dlg.showModal();
  runWin(r);
+}
+// Goal achieved: a trophy with laurels, played with the full Legend effects and its own fanfare.
+function trophySVG(){
+ const T=TIERS[10],ink='#0f1824',edge='stroke="#fff" stroke-opacity=".8" stroke-width="4" stroke-linejoin="round"',spark=(x,y,r)=>'<path d="M'+x+' '+(y-r)+'L'+(x+r*.28)+' '+(y-r*.28)+'L'+(x+r)+' '+y+'L'+(x+r*.28)+' '+(y+r*.28)+'L'+x+' '+(y+r)+'L'+(x-r*.28)+' '+(y+r*.28)+'L'+(x-r)+' '+y+'L'+(x-r*.28)+' '+(y-r*.28)+'Z" fill="'+T.c2+'" stroke="#fff" stroke-opacity=".7" stroke-width="2"/>';
+ let leaves='';for(let i=0;i<6;i++){const a=112+i*17,r=100,x=(r*Math.cos(a*Math.PI/180)).toFixed(1),y=(r*Math.sin(a*Math.PI/180)).toFixed(1);leaves+='<ellipse cx="'+x+'" cy="'+y+'" rx="17" ry="7" transform="rotate('+(a+60)+' '+x+' '+y+')"/>';}
+ const laurel='<path d="M-34 86 A92 92 0 0 1 -90 -16" fill="none" stroke="'+T.c+'" stroke-width="4" stroke-linecap="round"/><g fill="'+T.c+'" stroke="#fff" stroke-opacity=".6" stroke-width="2">'+leaves+'</g>';
+ return '<defs><linearGradient id="eg-goal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+T.c2+'"/><stop offset="1" stop-color="'+T.c+'"/></linearGradient></defs>'
+ +'<g class="em-wings">'+laurel+'<g transform="scale(-1,1)">'+laurel+'</g></g>'
+ +'<g class="em-blades"><path d="M-48 -52C-84 -54-86 -6-38 -2M48 -52C84 -54 86 -6 38 -2" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="16" stroke-linecap="round"/><path d="M-48 -52C-84 -54-86 -6-38 -2M48 -52C84 -54 86 -6 38 -2" fill="none" stroke="'+T.c+'" stroke-width="9" stroke-linecap="round"/></g>'
+ +'<g class="em-frame"><path d="M-52 -70H52V-42C52 -4 30 16 0 18C-30 16-52 -4-52 -42Z" fill="url(#eg-goal)" '+edge+'/><path d="M-10 17H10V38H-10Z" fill="'+T.c+'" '+edge+'/><path d="M-32 38H32L38 52H-38Z" fill="url(#eg-goal)" '+edge+'/><rect x="-48" y="52" width="96" height="18" rx="4" fill="'+T.c+'" '+edge+'/></g>'
+ +'<g class="em-sym"><polygon points="'+starPts(20)+'" transform="translate(0 -30)" fill="'+ink+'" fill-opacity=".78"/></g>'
+ +'<g class="em-crown">'+spark(0,-100,15)+spark(-36,-88,9)+spark(36,-88,9)+'</g>';
+}
+const GOAL_MSG=['You set a target and you reached it. That is follow-through.','Every check-off added up to this. Take a moment to enjoy it.','Goal complete. Pick the next one while the momentum is yours.','Big things are built one day at a time. You just proved it.'];
+function playGoal(g){
+ if(!g)return;const dlg=$('win');
+ dlg.style.setProperty('--wc',TIERS[10].c);dlg.classList.add('goal-win');
+ $('win-emblem').innerHTML=trophySVG();
+ $('win-tag').textContent='Goal achieved';$('win-name').textContent=g.t;
+ $('win-sub').textContent=byName(g.by)+(g.d?spare(g):'');$('win-msg').textContent=GOAL_MSG[g.t.length%GOAL_MSG.length];
+ $('win-perfect').hidden=true;muteIcon();
+ if(!dlg.open)dlg.showModal();
+ runWin({k:10,p:100,goal:true});
 }
 function placeDeco(){const r=$('win-em').getBoundingClientRect(),d=$('win-deco').style;d.left=r.left+'px';d.top=r.top+'px';d.width=r.width+'px';d.height=r.height+'px';}
 function stopWin(){if(!W)return;W.timers.forEach(clearTimeout);W.anims.forEach(a=>{try{a.cancel();}catch(e){}});if(W.cu)cancelAnimationFrame(W.cu);W=null;fxClear();}
@@ -1142,7 +1565,7 @@ function runWin(r){
  $('win-pct').textContent='0%';$('win-skip').hidden=reduce;
  fxInit();placeDeco();
  const ent=k>=6?430:560;
- winSound(k,reduce?60:ent);
+ winSound(r.goal?11:k,reduce?60:ent);
  if(reduce){settleWin();return;}
  const A=(el,kf,o)=>{if(!el||!el.animate)return null;const a=el.animate(kf,Object.assign({fill:'both',easing:'cubic-bezier(.2,.8,.2,1)'},o));W.anims.push(a);return a;};
  const at=(ms,fn)=>{W.timers.push(setTimeout(fn,ms));};
@@ -1261,7 +1684,11 @@ const TIER_SOUNDS=[
   [[n.G5,0],[n.C6,.14],[n.E6,.28],[n.G6,.42]].forEach(([f,o])=>{sTone(ti+.3+o,f,o===.42?1.1:.2,'square',.035);sTone(ti+.3+o,f,o===.42?1.2:.24,'triangle',.08);});
   sChord(ti+.72,[n.C5,n.E5,n.G5,n.C6],1.9,'triangle',.08,.08);
   for(let i=0;i<12;i++)sBell(ti+.9+i*.1,n.C7*(1+Math.random()*.9),.5,.035,2,1,(Math.random()-.5)*1.4);
-  sNoise(ti+.4,1.8,.05,6000,9500,.5);}
+  sNoise(ti+.4,1.8,.05,6000,9500,.5);},
+ // Goal achieved: a brass-like fanfare with a long bell tail.
+ (t0,ti)=>{const n=NT;sNoise(t0,Math.max(.25,ti-t0+.05),.16,300,3800,.9);sSlam(ti,.6);
+  [[n.G4,0,.13],[n.G4,.15,.13],[n.G4,.3,.13],[n.C5,.45,.5],[n.E5,.97,.2],[n.G5,1.2,1.3]].forEach(([f,o,d])=>{sTone(ti+.12+o,f,d,'sawtooth',.035,0,.02);sTone(ti+.12+o,f*2,d,'triangle',.06,0,.02);});
+  sChord(ti+1.32,[n.C5,n.E5,n.G5,n.C6],1.8,'triangle',.07,.06);sBell(ti+1.34,n.C7,1.4,.06,2.76,1.5,-.3);sBell(ti+1.5,n.G6,1.3,.05,2.76,1.5,.3);sNoise(ti+1.3,1.6,.05,6000,9500,.5);}
 ];
 function winSound(k,landMs){
  if(!audio())return;
@@ -1278,10 +1705,10 @@ $('win-stage').addEventListener('click',e=>{if(e.target.closest('button'))return
 $('win-close').onclick=()=>$('win').close();
 $('win-replay').onclick=()=>{const r=W&&W.r;if(r)runWin(r);};
 $('win-mute').onclick=()=>setSound(!state.set.sound);
-$('tier-preview').innerHTML=TIERS.map((t,k)=>'<option value="'+k+'">Tier '+(k+1)+': '+t.n+' ('+(k===10?'100%':k*10+'\u2013'+(k*10+9)+'%')+')</option>').join('');
+$('tier-preview').innerHTML=TIERS.map((t,k)=>'<option value="'+k+'">Tier '+(k+1)+': '+t.n+' ('+(k===10?'100%':k*10+'\u2013'+(k*10+9)+'%')+')</option>').join('')+'<option value="11">Goal achieved</option>';
 // Plays any medal for a look and listen. Nothing is saved.
-$('tier-play').onclick=()=>{const k=+$('tier-preview').value,p=k===10?100:k*10+5;playWin({k,p,done:p,total:100,date:ui.date});$('win-sub').textContent='Preview only. Nothing is saved.';};
-$('win').addEventListener('close',()=>{stopWin();renderFinish();});
+$('tier-play').onclick=()=>{const k=+$('tier-preview').value,p=k===10?100:k*10+5;if(k===11)playGoal({t:'Run a 5K',by:defaultBy('s')});else playWin({k,p,done:p,total:100,date:ui.date});$('win-sub').textContent='Preview only. Nothing is saved.';};
+$('win').addEventListener('close',()=>{stopWin();$('win').classList.remove('goal-win');renderFinish();});
 $('win-stage').addEventListener('scroll',()=>{if($('win').open)placeDeco();},{passive:true});
 window.addEventListener('resize',()=>{if($('win').open)placeDeco();});
 /* ---------- app lock ---------- */
@@ -1323,8 +1750,9 @@ function showLock(msg){
  setTimeout(()=>{try{$('lock-pass').focus();}catch(e){}},50);
 }
 function wipeScreen(){
- ['day-hero','day-strip','day-list','view-week','view-month','banner','ts-suggest','day-count'].forEach(id=>{$(id).innerHTML='';});
- document.querySelectorAll('[data-notes],#set-name,#ts-name,#ts-start,#ts-end').forEach(e=>{e.value='';});
+ ['day-hero','day-strip','day-list','view-week','view-month','view-goals','day-goals','banner','ts-suggest','day-count','gs-steps','gs-links','gs-when','num-body','win-name','win-sub'].forEach(id=>{$(id).innerHTML='';});
+ document.querySelectorAll('[data-notes],#set-name,#ts-name,#ts-start,#ts-end,#gs-name,#gs-target,#gs-ns,#gs-nv,#gs-nt,#gs-nu,#num-val').forEach(e=>{e.value='';});
+ gedit=null;numFor=null;
  $('rec-frame').srcdoc='';$('st-usage').textContent='';$('finish-day').hidden=true;$('toast').hidden=true;
 }
 async function lockNow(){
@@ -1463,15 +1891,17 @@ function reportHTML(ws,mode){
   if(s.arch||s.pre)continue;const c=checks(d);
   for(const it of items(d)){let r=rows.get(it.id);if(!r){r={t:it.t,s:it.s,e:it.e,o:it.o,cells:[null,null,null,null,null,null,null]};rows.set(it.id,r);}r.cells[i]=c.has(it.id)?1:0;}
  }
- const list=Array.from(rows.values()).sort((a,b)=>a.o-b.o||a.s-b.s),w=weekStats(ws),notes=state.notes[ws]||'';
+ const list=Array.from(rows.values()).sort((a,b)=>a.o-b.o||a.s-b.s),w=weekStats(ws),notes=state.notes[ws]||'',we=addDays(ws,6),cur=ws===monday(today());
+ // Goals achieved that week, plus active goals when it is the current week.
+ const gl=goalsSorted().filter(x=>x.g.d?x.g.d>=ws&&x.g.d<=we:cur),goals=gl.length?'<h2>Goals</h2><ul class="goals">'+gl.map(x=>'<li><b>'+esc(x.g.t)+'</b> · '+esc(byName(x.g.by))+' · '+(x.g.d?'achieved '+esc(longDate(x.g.d)):gProgress(x.g).p+'% so far')+'</li>').join('')+'</ul>':'';
  const th=SHORT.map((n,i)=>'<th class="c">'+n+'<br><small>'+parse(addDays(ws,i)).getDate()+'</small></th>').join('');
  const body=list.length?list.map((r,k)=>'<tr'+(k%2?' class="alt"':'')+'><td class="time">'+esc(fmtRange(r.s,r.e))+'</td><td>'+esc(r.t)+'</td>'+r.cells.map(c=>'<td class="c">'+(c===1?'<span class="yes">&#10003;</span>':c===0?'<span class="no">&#9633;</span>':'')+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="9">Nothing scheduled this week.</td></tr>';
  const foot='<tr class="tot"><td colspan="2">Done</td>'+heads.map(s=>'<td class="c">'+(s.pre||(s.arch&&s.none)?'':s.total?s.done+'/'+s.total:'Rest')+'</td>').join('')+'</tr>';
- return '<!doctype html><html lang="en"'+(mode?' data-theme="'+mode+'"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'"><meta name="color-scheme" content="light dark"><title>Daily Missions record '+ws+'</title><style>:root{color-scheme:light;--bg:#e8ecf0;--ink:#1f2b3a;--muted:#4b5b6d;--line:#c6cfda;--alt:#dfe4ea;--head:#243244;--hm:#b9c6d4;--tot:#f1e1bf;--yes:#9a5800;--no:#8494a6;--foot:#5d6d80;--notes:#dfe4ea}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}}:root[data-theme=dark]{color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}@media print{:root:root:root{color-scheme:light;--bg:#fff;--ink:#1f2b3a;--muted:#536477;--line:#d8e0e9;--alt:#f4f7fa;--head:#243244;--hm:#b9c6d4;--tot:#fff3dc;--yes:#c57400;--no:#9fafc0;--foot:#7a8898;--notes:#f4f7fa}}html{background:var(--bg)}body{font:14px/1.45 system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:24px auto;max-width:960px;padding:0 16px}.tag{display:inline-block;background:#ffac32;color:#182331;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 16px 4px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}h1{font-size:34px;font-style:italic;font-weight:900;margin:8px 0 2px;letter-spacing:-.02em;text-transform:uppercase}.sub{color:var(--muted);margin:0 0 14px}.rule{height:4px;background:linear-gradient(90deg,#ffac32 40%,var(--line) 40%);margin:0 0 18px}.sum{font-weight:800;margin:0 0 14px}table{width:100%;border-collapse:collapse}th{background:var(--head);color:#fff;text-align:left;padding:8px;font-size:12px;letter-spacing:.04em}th small{font-weight:600;color:var(--hm)}td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.alt td{background:var(--alt)}.c{text-align:center;width:44px}.time{white-space:nowrap;font-weight:700;color:var(--muted);width:120px;font-variant-numeric:tabular-nums}.yes{color:var(--yes);font-weight:900;font-size:16px}.no{color:var(--no);font-size:16px}tr.tot td{font-weight:800;background:var(--tot)}h2{font-size:15px;font-style:italic;text-transform:uppercase;margin:22px 0 8px}.notes{white-space:pre-wrap;background:var(--notes);padding:12px;border-radius:6px;margin:0}footer{margin-top:20px;color:var(--foot);font-size:11px}@media print{body{margin:0;font-size:10px}h1{font-size:24px}td,th{padding:4px}tr{break-inside:avoid}thead{display:table-header-group}}</style></head><body>'
+ return '<!doctype html><html lang="en"'+(mode?' data-theme="'+mode+'"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'"><meta name="color-scheme" content="light dark"><title>Daily Missions record '+ws+'</title><style>:root{color-scheme:light;--bg:#e8ecf0;--ink:#1f2b3a;--muted:#4b5b6d;--line:#c6cfda;--alt:#dfe4ea;--head:#243244;--hm:#b9c6d4;--tot:#f1e1bf;--yes:#9a5800;--no:#8494a6;--foot:#5d6d80;--notes:#dfe4ea}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}}:root[data-theme=dark]{color-scheme:dark;--bg:#111a25;--ink:#e9eff6;--muted:#a4b3c4;--line:#2d3b4f;--alt:#1a2534;--head:#0b131d;--hm:#a8b6c7;--tot:#352b19;--yes:#ffbd5c;--no:#5f7189;--foot:#8b9bb0;--notes:#1a2534}@media print{:root:root:root{color-scheme:light;--bg:#fff;--ink:#1f2b3a;--muted:#536477;--line:#d8e0e9;--alt:#f4f7fa;--head:#243244;--hm:#b9c6d4;--tot:#fff3dc;--yes:#c57400;--no:#9fafc0;--foot:#7a8898;--notes:#f4f7fa}}html{background:var(--bg)}body{font:14px/1.45 system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:24px auto;max-width:960px;padding:0 16px}.tag{display:inline-block;background:#ffac32;color:#182331;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 16px 4px 8px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}h1{font-size:34px;font-style:italic;font-weight:900;margin:8px 0 2px;letter-spacing:-.02em;text-transform:uppercase}.sub{color:var(--muted);margin:0 0 14px}.rule{height:4px;background:linear-gradient(90deg,#ffac32 40%,var(--line) 40%);margin:0 0 18px}.sum{font-weight:800;margin:0 0 14px}table{width:100%;border-collapse:collapse}th{background:var(--head);color:#fff;text-align:left;padding:8px;font-size:12px;letter-spacing:.04em}th small{font-weight:600;color:var(--hm)}td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr.alt td{background:var(--alt)}.c{text-align:center;width:44px}.time{white-space:nowrap;font-weight:700;color:var(--muted);width:120px;font-variant-numeric:tabular-nums}.yes{color:var(--yes);font-weight:900;font-size:16px}.no{color:var(--no);font-size:16px}tr.tot td{font-weight:800;background:var(--tot)}h2{font-size:15px;font-style:italic;text-transform:uppercase;margin:22px 0 8px}.goals{margin:0;padding-left:20px}.goals li{margin:0 0 4px}.notes{white-space:pre-wrap;background:var(--notes);padding:12px;border-radius:6px;margin:0}footer{margin-top:20px;color:var(--foot);font-size:11px}@media print{body{margin:0;font-size:10px}h1{font-size:24px}td,th{padding:4px}tr{break-inside:avoid}thead{display:table-header-group}}</style></head><body>'
  +'<span class="tag">WEEKLY RECORD</span><h1>Daily Missions</h1><p class="sub">'+esc(state.name||'Your week')+' · '+esc(weekRange(ws))+'</p><div class="rule"></div>'
  +'<p class="sum">'+w.done+' of '+w.total+' objectives done ('+pct(w)+'%)</p>'
  +'<table><thead><tr><th>Time</th><th>Objective</th>'+th+'</tr></thead><tbody>'+body+foot+'</tbody></table>'
- +'<h2>Week notes</h2><p class="notes">'+esc(notes||'No notes for this week.')+'</p><footer>Generated '+esc(new Date().toLocaleString())+'. One objective at a time.</footer></body></html>';
+ +goals+'<h2>Week notes</h2><p class="notes">'+esc(notes||'No notes for this week.')+'</p><footer>Generated '+esc(new Date().toLocaleString())+'. One objective at a time.</footer></body></html>';
 }
 let recWeek=null;
 function viewRecord(ws){recWeek=ws;$('rec-title').textContent='Week of '+fmtD(ws,{month:'short',day:'numeric'});$('rec-frame').srcdoc=reportHTML(ws,darkNow()?'dark':'light');$('record-dialog').showModal();}
@@ -1518,8 +1948,8 @@ async function restoreText(text){
    try{raw=JSON.parse(opened);}catch(e){throw Error('the backup is damaged.');}
   }
   const next=validate(raw);if(state.pid)next.pid=state.pid;else delete next.pid;
-  const n=Object.keys(next.days).length,tk=Object.keys(next.tasks).length;
-  if(!await ask({title:'Restore backup?',body:'This backup has '+tk+' task'+(tk===1?'':'s')+' and '+n+' day'+(n===1?'':'s')+' of check marks. Restoring replaces everything in this planner on this device. Export a backup first if you want to keep what is here now.',ok:'Restore',danger:true}))return;
+  const n=Object.keys(next.days).length,tk=Object.keys(next.tasks).length,gn=Object.keys(next.goals).length;
+  if(!await ask({title:'Restore backup?',body:'This backup has '+tk+' task'+(tk===1?'':'s')+(gn?', '+gn+' goal'+(gn===1?'':'s')+',':'')+' and '+n+' day'+(n===1?'':'s')+' of check marks. Restoring replaces everything in this planner on this device. Export a backup first if you want to keep what is here now.',ok:'Restore',danger:true}))return;
   snapshot();state=next;save();ui.date=today();render();toast('Backup restored.',{label:'Undo',fn:undo});runPruneCheck(false);applySecure();
  }catch(e){toast('Could not restore: '+(e&&e.message||'unreadable file'));}
 }
@@ -1594,6 +2024,9 @@ document.addEventListener('click',e=>{
  if(b.hasAttribute('data-mtoday')){ui.month=today().slice(0,7);renderMonth();return;}
  if(ds.record){viewRecord(ds.record);return;}
  if(ds.edit){const it=items(ui.date).find(i=>i.id===ds.edit);if(it)openTask(it,ds.focus);return;}
+ if(ds.goalOpen){openGoal(ds.goalOpen);return;}
+ if(ds.goalNew!=null){openGoal(null,BYRE.test(ds.goalNew)?ds.goalNew:null);return;}
+ if(ds.gnum){openNum(ds.gnum);return;}
  if(b.hasAttribute('data-add')){openTask(null);return;}
  if(b.hasAttribute('data-finish')){finishDay();return;}
  if(b.hasAttribute('data-close')){b.closest('dialog').close();return;}
@@ -1604,7 +2037,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
  const el=e.target;
- if(el.matches('input[data-check]')){const d=el.dataset.date,id=el.dataset.check;setCheck(d,id,el.checked);const row=el.closest('.task,.witem');if(row)row.classList.toggle('done',el.checked);afterCheck(d,el.checked);return;}
+ if(el.matches('input[data-check]')){const d=el.dataset.date,id=el.dataset.check;setCheck(d,id,el.checked);const row=el.closest('.task,.witem');if(row)row.classList.toggle('done',el.checked);afterCheck(d,el.checked);goalAfterCheck(d,id,el.checked);return;}
+ if(el.matches('input[data-gstep]')){const g=state.goals[el.dataset.gstep],i=+el.dataset.si;if(!g||!g.ms||!g.ms[i])return;snapshot();if(el.checked)g.ms[i].c=1;else delete g.ms[i].c;const won=checkGoals();save();refreshGoals();if(won.length)celebrate(won);else if(el.checked)toast('Step done: '+g.ms[i].t,{label:'Undo',fn:undo});return;}
  if(el.name==='theme'){state.set.theme=el.value;save();applyTheme();return;}
  if(el.name==='clock'){state.set.clock=+el.value;save();return;}
  if(el.name==='sound'){setSound(el.value==='on');return;}
@@ -1663,7 +2097,7 @@ if(locked)showLock();else start();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
 // Test harness only: render one medal's sound offline and report its loudness envelope and brightness.
 async function renderTier(k){const keep=[AC,AM,NB],sr=22050;try{const oc=new OfflineAudioContext(1,sr*5,sr);AC=oc;NB=null;const comp=oc.createDynamicsCompressor();AM=oc.createGain();AM.gain.value=.55;AM.connect(comp);comp.connect(oc.destination);TIER_SOUNDS[k](.03,.03+(k>=6?.43:.56));const d=(await oc.startRendering()).getChannelData(0),win=sr/10,env=[],zc=[];let peak=0,last=0;for(let w=0;w<50;w++){let e=0,z=0;for(let i=w*win;i<(w+1)*win;i++){const x=d[i];e+=x*x;if(Math.abs(x)>peak)peak=Math.abs(x);if(Math.abs(x)>.01)last=i;if(i&&(x>=0)!==(d[i-1]>=0))z++;}env.push(Math.sqrt(e/win));zc.push(z);}return {peak,seconds:last/sr,env,zc};}finally{AC=keep[0];AM=keep[1];NB=keep[2];}}
-if(window.__MM_TEST__)window.MM={renderTier,get state(){return state;},validate,items,stats,archive,planPrune,tierOf,emblemSVG,TIERS,fxCount:()=>P.length};
+if(window.__MM_TEST__)window.MM={renderTier,get state(){return state;},validate,items,stats,archive,planPrune,tierOf,emblemSVG,TIERS,fxCount:()=>P.length,byPeriod,byName,byChoices,timeLeft,gProgress,checkGoals};
 })();
 </script>
 </body>
