@@ -31,6 +31,16 @@ public class ReminderListTest {
     }
 
     @Test
+    public void acceptsGoalReminders() {
+        List<ReminderList.Item> l = ReminderList.parse("["
+                + "{\"id\":\"g:2026-S4:lead\",\"ch\":\"goal\",\"title\":\"Goal date in 1 week: Winter 2026/27\",\"body\":\"Run a 5K is at 25%.\",\"at\":\"2027-02-21T09:00\"},"
+                + "{\"id\":\"w:2026-11-29\",\"ch\":\"goal\",\"title\":\"Weekly goal check-in\",\"body\":\"Run a 5K 25%.\",\"at\":\"2026-11-29T18:00\"}]");
+        assertEquals(2, l.size());
+        assertEquals("goal", l.get(0).channel);
+        assertEquals("w:2026-11-29", l.get(0).id);
+    }
+
+    @Test
     public void rejectsBadInput() {
         assertTrue(ReminderList.parse("not json").isEmpty());
         assertTrue(ReminderList.parse(null).isEmpty());

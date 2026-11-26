@@ -14,4 +14,9 @@ final class Prefs {
     static SharedPreferences reminders(Context c) {
         return c.getSharedPreferences("reminders", Context.MODE_PRIVATE);
     }
+
+    /** The snapshot of today's tasks that the home-screen widget shows. */
+    static SharedPreferences widget(Context c) {
+        return c.getSharedPreferences("widget", Context.MODE_PRIVATE);
+    }
 }

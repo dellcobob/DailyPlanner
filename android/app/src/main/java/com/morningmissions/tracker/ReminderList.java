@@ -21,7 +21,7 @@ final class ReminderList {
     static final int MAX_ITEMS = 500;
     static final int MAX_JSON = 400_000;
     static final Set<String> CHANNELS = Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList("task", "summary", "finish", "missed", "test")));
+            new HashSet<>(Arrays.asList("task", "summary", "finish", "missed", "goal", "test")));
 
     static final class Item {
         final String id, channel, title, body;

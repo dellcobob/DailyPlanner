@@ -14,6 +14,7 @@ public class BootReceiver extends BroadcastReceiver {
                 || Intent.ACTION_TIME_CHANGED.equals(a)
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(a)) {
             Reminders.arm(context);
+            WidgetProvider.refresh(context);
         }
     }
 }

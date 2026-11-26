@@ -18,6 +18,7 @@ final class Notifier {
         {"summary", "Morning summary", "Your objectives for the day, before the first one starts."},
         {"finish", "Finish-day reminder", "An evening nudge to finish your day and see your medal."},
         {"missed", "Missed-task nudges", "A nudge when a task ended and is not checked off."},
+        {"goal", "Goal reminders", "Goal dates coming up and your weekly goal check-in."},
         {"test", "Test notifications", "Sent when you tap Send a test notification."},
     };
 

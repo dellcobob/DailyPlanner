@@ -406,6 +406,12 @@ public class MainActivity extends Activity {
 
     /** App-level switches the page controls. */
     final class AppBridge {
+        /** Today's tasks (and the next two days) for the home-screen widget. */
+        @JavascriptInterface
+        public void setWidget(String json) {
+            WidgetProvider.save(MainActivity.this, json);
+        }
+
         /** Hides the planner from screenshots, screen recording, and the recent-apps preview. */
         @JavascriptInterface
         public void setSecure(boolean on) {
