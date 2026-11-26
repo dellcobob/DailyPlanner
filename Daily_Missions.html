@@ -2,7 +2,7 @@
 <html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-IsQAcHDkmY36nm4UOdCUn5Yv7FgvHhLrayP1jhST8vU='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-895/QOYwqRiX1L5p6lJGq/d6jjZ9rxxqGMU8MbxeyDs=' 'sha256-aqX2HH4ZBfNNYZ7f+U7qbdALek9YnncJnUOnpS++HDw='; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; worker-src 'none'; manifest-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#182331">
@@ -288,6 +288,7 @@ button.gchip{color:var(--ink);border-color:var(--line-strong)}
 .n-off{opacity:.5}
 .n-pair{display:flex;gap:8px}.n-pair>*{flex:1;min-width:0}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:.88rem;margin:0 0 12px;min-width:0}
+.field .hint{font-weight:400}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:0 12px}
 .seg{display:flex;gap:4px;background:var(--surface-3);border-radius:10px;padding:4px}
 .seg label{flex:1;min-width:0;position:relative}
@@ -1022,7 +1023,7 @@ function clearUndo(){undoStack=[];redoStack=[];undoUI();}
 function undoUI(){const b=$('undo-btn');if(!b)return;const top=undoStack[undoStack.length-1];b.hidden=!top||locked;b.setAttribute('aria-label',top?'Undo: '+(top.label||'last change')+(undoStack.length>1?' ('+undoStack.length+' changes can be undone)':''):'Undo');b.title=top?'Undo: '+(top.label||'last change'):'Undo';}
 function toast(msg,act){
  // The change a toast offers to undo gives the undo step its name.
- if(act&&act.fn===undo){const top=undoStack[undoStack.length-1];if(top&&!top.label)top.label=String(msg).replace(/\.$/,'').slice(0,90);}
+ if(act&&act.fn===undo){const top=undoStack[undoStack.length-1];if(top&&!top.label){top.label=String(msg).replace(/\.$/,'').slice(0,90);undoUI();}}
  $('toast-msg').textContent=msg;const b=$('toast-act');
  if(act){b.textContent=act.label;b.hidden=false;b.onclick=()=>{$('toast').hidden=true;act.fn();};}else{b.hidden=true;b.onclick=null;}
  $('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{$('toast').hidden=true;},act?7000:4500);
@@ -1651,7 +1652,7 @@ function renderHistory(){
  for(const x of cal){const n=parse(x.d).getDate(),fut=x.d>t;let cls='',lab='';
   if(x.gap){cls='gap';lab='no record';}else if(!x.sched){lab='not scheduled';}
   else if(fut){cls='fut';lab='scheduled';}
-  else if(x.done===x.sched){cls='done';lab='done';}else if(x.done){cls='part';lab=x.done+' of '+x.sched+' done';}else{cls='miss';lab=x.d===t?'not done yet':'missed';}
+  else if(x.done===x.sched){cls='done';lab='done';}else if(x.done){cls='part';lab=x.done+' of '+x.sched+' done';}else if(x.d===t){cls='fut';lab='not done yet';}else{cls='miss';lab='missed';}
   cells+='<span class="'+cls+'" role="img" aria-label="'+esc(shortDate(x.d)+': '+lab)+'">'+n+'</span>';}
  const mName=parse(first).toLocaleDateString(undefined,{month:'long',year:'numeric'}),it=h.it;
  $('hist-title').textContent=h.name;
@@ -2061,7 +2062,7 @@ function planReminders(){
    const last=byPeriod(by).end,lead=addDays(last,-S.nGoalLead),nm=byName(by),top=list[0].g;
    const what=anon?'Open Daily Missions to see your goals.':top.t+' is at '+gProgress(top).p+'%'+(list.length>1?', plus '+(list.length-1)+' more goal'+(list.length>2?'s':''):'')+'.';
    if(lead>=t&&lead<end)add('g:'+by+':lead','goal',lead,540,anon?'A goal date is coming up':'Goal date in '+(S.nGoalLead===7?'1 week':S.nGoalLead===14?'2 weeks':S.nGoalLead+' days')+': '+nm,what);
-   if(last>=t&&last<end)add('g:'+by+':last','goal',last,540,anon?'Last day for a goal':'Last day for '+nm,what);
+   if(last>=t&&last<end)add('g:'+by+':last','goal',last,540,anon?'A goal date is today':'Goal date today: '+nm,what);
   }
  }
  if(S.nWeek&&act.length)for(let i=0;i<14;i++){

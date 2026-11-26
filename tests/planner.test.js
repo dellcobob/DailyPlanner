@@ -1178,6 +1178,239 @@ async function test(name, fn) {
     await ctx.close();
   });
 
+  await test('repeat patterns: every 2 weeks, monthly by date or weekday, and every few days', async () => {
+    const { ctx, p } = await open();
+    await p.click('#add-row');
+    await p.fill('#ts-name', 'Clean fridge'); await p.fill('#ts-start', '11:00'); await p.fill('#ts-end', '11:30');
+    assert.deepEqual(await p.$$eval('#ts-rep option', o => o.map(x => x.value + '=' + x.textContent)),
+      ['w1=Every week', 'w2=Every 2 weeks', 'w3=Every 3 weeks', 'w4=Every 4 weeks', 'm=Every month on the 20th', 'mw=Every month on the third Friday', 'dn=Every few days', 'once=This day only']);
+    await p.selectOption('#ts-rep', 'w2');
+    assert.match(await p.textContent('#ts-days-hint'), /Every 2 weeks: Fri\. After this day, next on Fri, Dec 4\./);
+    await p.click('#ts-save');
+    assert.match(await p.textContent('#toast-msg'), /Added\. Repeats every 2 weeks: Fri\./);
+    await goto(p, '2026-11-27'); assert.ok(!(await titles(p)).includes('Clean fridge'), 'skips the next week');
+    await goto(p, '2026-12-04'); assert.ok((await titles(p)).includes('Clean fridge'));
+    assert.match(await p.locator('#day-list .task', { hasText: 'Clean fridge' }).locator('.task-meta').textContent(), /Every 2 weeks: Fri/);
+    await goto(p, '2026-11-20');
+    await p.click('#add-row'); await p.fill('#ts-name', 'Book club'); await p.fill('#ts-start', '19:00'); await p.fill('#ts-end', '20:00');
+    await p.selectOption('#ts-rep', 'mw'); await p.click('#ts-save');
+    await goto(p, '2026-12-11'); assert.ok(!(await titles(p)).includes('Book club'));
+    await goto(p, '2026-12-18'); assert.ok((await titles(p)).includes('Book club'), 'third Friday of December');
+    await goto(p, '2026-11-20');
+    await p.click('#add-row'); await p.fill('#ts-name', 'Water plants'); await p.fill('#ts-start', '18:00'); await p.fill('#ts-end', '18:10');
+    await p.selectOption('#ts-rep', 'dn');
+    assert.equal(await p.isVisible('#ts-week-ui'), false, 'weekdays are hidden for every few days');
+    await p.fill('#ts-ndays', '3'); await p.dispatchEvent('#ts-ndays', 'input');
+    assert.match(await p.textContent('#ts-days-hint'), /Every 3 days\. After this day, next on Mon, Nov 23\./);
+    await p.click('#ts-save');
+    await goto(p, '2026-11-23'); assert.ok((await titles(p)).includes('Water plants'));
+    await goto(p, '2026-11-24'); assert.ok(!(await titles(p)).includes('Water plants'));
+    // Changing the pattern applies from that day on.
+    await goto(p, '2026-11-23'); await openEdit(p, 'Water plants');
+    assert.equal(await p.inputValue('#ts-rep'), 'dn'); assert.equal(await p.inputValue('#ts-ndays'), '3');
+    await p.fill('#ts-ndays', '4'); await p.dispatchEvent('#ts-ndays', 'input');
+    assert.match(await p.textContent('#ts-days-hint'), /applies from Mon, Nov 23 on/);
+    await p.click('#ts-save');
+    await goto(p, '2026-11-27'); assert.ok((await titles(p)).includes('Water plants'));
+    await goto(p, '2026-11-26'); assert.ok(!(await titles(p)).includes('Water plants'));
+    await goto(p, '2026-11-20'); assert.ok((await titles(p)).includes('Water plants'), 'earlier days keep the old pattern');
+    const r = await p.evaluate(() => { const M = window.MM; return [
+      M.hits({ k: 'm', n: 31 }, '2027-02-28'), M.hits({ k: 'm', n: 31 }, '2027-02-27'), M.hits({ k: 'm', n: 0 }, '2026-11-30'),
+      M.hits({ k: 'mw', i: 5, w: 4 }, '2026-11-27'), M.hits({ k: 'mw', i: 5, w: 4 }, '2026-11-20'),
+      M.hits({ k: 'd', n: 3, a: '2026-11-20' }, '2026-11-17'), M.hits({ k: 'w', n: 2, a: '2026-11-16' }, '2026-11-02'),
+      M.repeatLabel(127, { k: 'm', n: 0 }), M.repeatLabel(127, { k: 'mw', i: 5, w: 4 }), M.repeatLabel(21, { k: 'w', n: 3, a: '2026-11-16' })]; });
+    assert.deepEqual(r, [true, false, true, true, false, true, true, 'Monthly on the last day', 'Monthly on the last Friday', 'Every 3 weeks: Mon Wed Fri']);
+    const bad = await p.evaluate(() => { try { window.MM.validate({ v: 3, tasks: { a: { o: 1, h: [{ f: '2000-01-01', t: 'X', s: 60, e: 90, d: 127, p: { k: 'yearly' } }] } } }); return 'accepted'; } catch (e) { return e.message; } });
+    assert.match(bad, /invalid repeat pattern/);
+    await ctx.close();
+  });
+
+  await test('overnight tasks run past midnight, and their reminders follow', async () => {
+    const { ctx, p } = await open({ now: new Date('2026-11-20T23:00:00'), init: NATIVE_MOCK + "window.__nn.perm='granted';" });
+    await p.click('#add-row');
+    await p.fill('#ts-name', 'Night shift'); await p.fill('#ts-start', '22:00'); await p.fill('#ts-end', '22:00'); await p.dispatchEvent('#ts-end', 'input');
+    assert.match(await p.textContent('#ts-dur'), /must be different/);
+    await p.fill('#ts-end', '06:00'); await p.dispatchEvent('#ts-end', 'input');
+    assert.match(await p.textContent('#ts-dur'), /Overnight: lasts 8 h and ends the next day\./);
+    await p.fill('#ts-start', '23:00'); await p.dispatchEvent('#ts-start', 'input');
+    assert.equal(await p.inputValue('#ts-end'), '07:00', 'moving the start keeps the length across midnight');
+    await p.click('#task-sheet [data-mask="0"]'); await p.click('#ts-save');
+    const row = p.locator('#day-list .task', { hasText: 'Night shift' });
+    assert.match(await row.textContent(), /Overnight/);
+    assert.match(await row.locator('.task-time').textContent(), /11:00 PM – 7:00 AM/);
+    assert.equal(await row.evaluate(r => r.classList.contains('now')), true, 'it is happening at 11 PM');
+    await tab(p, 'tools'); await p.check('input[name=notif][value=on]');
+    await p.waitForFunction(() => window.__nn.lists.length > 0);
+    const list = await lastList(p), nudge = list.find(x => x.id.startsWith('m:2026-11-20:') && x.title === 'Still open: Night shift');
+    assert.equal(nudge && nudge.at, '2026-11-21T07:30', 'the missed-task nudge comes after it ends the next morning');
+    await ctx.close();
+  });
+
+  await test('task notes show under the task and save without asking about repeats', async () => {
+    const { ctx, p } = await open();
+    await openEdit(p, 'Study');
+    await p.fill('#ts-notes', 'Chapter 4\nThen flashcards'); await p.click('#ts-save');
+    await p.waitForFunction(() => !document.querySelector('dialog[open]'));
+    assert.equal(await p.textContent('#toast-msg'), 'Notes saved.');
+    const note = p.locator('#day-list .task', { hasText: 'Study' }).locator('.task-note');
+    assert.equal(await note.textContent(), 'Chapter 4');
+    assert.equal((await S(p)).tasks.e.n, 'Chapter 4\nThen flashcards');
+    await goto(p, '2026-11-19');
+    assert.equal(await p.locator('#day-list .task', { hasText: 'Study' }).locator('.task-note').textContent(), 'Chapter 4', 'notes show on every day');
+    await p.click('#undo-btn');
+    assert.equal((await S(p)).tasks.e.n, undefined);
+    await p.click('#add-row'); await p.fill('#ts-name', 'Dentist'); await p.fill('#ts-notes', 'Bring the insurance card');
+    await p.click('#task-sheet [data-mask="0"]'); await p.click('#ts-save');
+    assert.equal((await S(p)).days['2026-11-19'].a[0].n, 'Bring the insurance card');
+    const cleaned = await p.evaluate(() => window.MM.validate({ v: 3, tasks: { a: { o: 1, n: 'hi‮ there\u0000', h: [{ f: '2000-01-01', t: 'X', s: 60, e: 90, d: 127 }] } } }).tasks.a.n);
+    assert.equal(cleaned, 'hi there');
+    await ctx.close();
+  });
+
+  await test('task history counts a task by name, and the Month screen lists every task', async () => {
+    const { ctx, p } = await open();
+    await p.evaluate(() => { const st = window.MM.state; st.since = '2026-11-02'; st.days['2026-11-16'] = { c: ['2'] }; st.days['2026-11-18'] = { c: ['2'] }; });
+    await yogaRow(p).locator('input').check();
+    await openEdit(p, 'Yoga'); await p.click('#ts-history'); await p.waitForSelector('#hist-dialog[open]');
+    assert.equal(await p.textContent('#hist-title'), 'Yoga');
+    const stats = await p.$$eval('#hist-body .mstat', els => els.map(e => e.textContent));
+    assert.deepEqual(stats, ['3 of 9This month (33%)', '3 of 9Last 30 days (33%)', '3Current streak (days)', '3Best streak (days)']);
+    assert.match(await p.textContent('#hist-body'), /Last done: today/);
+    assert.equal(await p.locator('#hist-body .hgrid .done').count(), 3);
+    assert.equal(await p.locator('#hist-body .hgrid .miss').count(), 6);
+    assert.equal(await p.locator('#hist-body .hgrid .fut').count(), 4, 'Nov 23, 25, 27, and 30 are coming up');
+    await p.click('#hist-body [data-hstep="-1"]');
+    assert.match(await p.textContent('#hist-body .vnav-title'), /October 2026/);
+    assert.equal(await p.locator('#hist-body .hgrid .gap').count(), 31, 'no record before the planner started');
+    await p.click('#hist-dialog [data-close]'); await p.click('#task-sheet [data-close]');
+    await tab(p, 'month');
+    assert.equal(await p.locator('.mtasks li').count(), 8, 'the longest lists are trimmed');
+    assert.equal(await p.textContent('.mtasks li'), 'Call family0 of 15 done0%', 'most scheduled first, then by name');
+    await p.click('[data-alltasks]');
+    assert.ok(await p.locator('.mtasks li').count() > 8);
+    const yoga = p.locator('.mtasks li', { has: p.locator('.mg-name > span', { hasText: /^Yoga$/ }) });
+    assert.match(await yoga.textContent(), /3 of 9 done/);
+    await yoga.locator('[data-hist]').click(); await p.waitForSelector('#hist-dialog[open]');
+    assert.equal(await p.textContent('#hist-title'), 'Yoga');
+    await p.click('#hist-dialog [data-close]');
+    await ctx.close();
+  });
+
+  await test('undo keeps many steps, with redo, a header button, and keyboard shortcuts', async () => {
+    const { ctx, p } = await open();
+    assert.equal(await p.isVisible('#undo-btn'), false);
+    for (const name of ['Alpha', 'Bravo', 'Charlie']) {
+      await p.click('#add-row'); await p.fill('#ts-name', name); await p.click('#task-sheet [data-mask="0"]'); await p.click('#ts-save');
+    }
+    assert.deepEqual(await p.evaluate(() => window.MM.undoDepth()), [3, 0]);
+    assert.match(await p.getAttribute('#undo-btn', 'aria-label'), /^Undo: Added for Fri, Nov 20 only \(3 changes can be undone\)$/);
+    await p.click('#undo-btn');
+    assert.equal(await p.textContent('#toast-msg'), 'Undone: Added for Fri, Nov 20 only');
+    await p.click('#undo-btn');
+    let t = await titles(p); assert.ok(t.includes('Alpha') && !t.includes('Bravo') && !t.includes('Charlie'));
+    await p.click('#toast-act');
+    t = await titles(p); assert.ok(t.includes('Bravo') && !t.includes('Charlie'), 'redo brings back the last undone step');
+    assert.deepEqual(await p.evaluate(() => window.MM.undoDepth()), [2, 1]);
+    await p.keyboard.press('Control+z');
+    assert.ok(!(await titles(p)).includes('Bravo'));
+    await p.keyboard.press('Control+Shift+z');
+    assert.ok((await titles(p)).includes('Bravo'));
+    await p.click('#add-row'); await p.fill('#ts-name', 'Delta'); await p.click('#task-sheet [data-mask="0"]'); await p.click('#ts-save');
+    assert.deepEqual(await p.evaluate(() => window.MM.undoDepth()), [3, 0], 'a new change clears redo');
+    for (let i = 0; i < 3; i++) await p.click('#undo-btn');
+    assert.equal(await p.isVisible('#undo-btn'), false);
+    assert.ok(!(await titles(p)).some(x => /Alpha|Bravo|Delta/.test(x)));
+    await ctx.close();
+  });
+
+  await test('any task, one-day ones too, can count toward a goal from the task editor', async () => {
+    const { ctx, p } = await open();
+    await newGoal(p, 'Run 20 times', async () => { await p.check('#gs-use-links'); await p.click('[data-glink="2"]'); await p.fill('#gs-target', '20'); });
+    await tab(p, 'day');
+    await p.click('#add-row'); await p.fill('#ts-name', 'Run in the park');
+    assert.equal(await p.isVisible('#ts-goals-f'), true);
+    await p.click('#ts-goals [data-tgoal]'); await p.click('#task-sheet [data-mask="0"]'); await p.click('#ts-save');
+    const st = await S(p), id = st.days['2026-11-20'].a.find(a => a.t === 'Run in the park').id, g = Object.values(st.goals)[0];
+    assert.deepEqual(g.lk, ['2', id]);
+    const run = p.locator('#day-list .task', { has: p.locator('.task-title', { hasText: /^Run in the park$/ }) });
+    assert.match(await run.locator('.gbadge').textContent(), /Run 20 times/);
+    await run.locator('input').check();
+    assert.match(await p.textContent('#toast-msg'), /\+1 toward "Run 20 times": 1 of 20 check-offs/);
+    await tab(p, 'goals'); await p.click('#view-goals .goal-name');
+    const chip = p.locator('#gs-links [data-glink="' + id + '"]');
+    assert.equal(await chip.getAttribute('aria-pressed'), 'true');
+    assert.match(await chip.textContent(), /One day: Fri, Nov 20/);
+    await p.click('#goal-sheet [data-close]');
+    await tab(p, 'day'); await openEdit(p, 'Run in the park');
+    await p.click('#ts-goals [data-tgoal]'); await p.click('#ts-save');
+    assert.equal(await p.textContent('#toast-msg'), 'Goal links saved.');
+    assert.deepEqual(Object.values((await S(p)).goals)[0].lk, ['2']);
+    await ctx.close();
+  });
+
+  await test('seasons can follow the Southern Hemisphere', async () => {
+    const { ctx, p } = await open();
+    const names = () => p.evaluate(() => ['2027-S1', '2027-S2', '2027-S3', '2026-S4'].map(window.MM.byName));
+    assert.deepEqual(await names(), ['Spring 2027', 'Summer 2027', 'Fall 2027', 'Winter 2026/27']);
+    await tab(p, 'tools'); await p.check('input[name=hemi][value=s]');
+    assert.deepEqual(await names(), ['Autumn 2027', 'Winter 2027', 'Spring 2027', 'Summer 2026/27']);
+    assert.equal((await S(p)).set.hemi, 's');
+    await ctx.close();
+  });
+
+  await test('goal reminders: a heads-up before the goal date, on the day, and a weekly check-in', async () => {
+    const { ctx, p } = await open({ init: NATIVE_MOCK + "window.__nn.perm='granted';" });
+    await newGoal(p, 'Finish the course', async () => {
+      await p.check('input[name=gs-kind][value=m]'); await p.selectOption('#gs-when', '2026-11');
+      await p.check('#gs-use-steps'); await p.fill('[data-gs-step="0"]', 'Week 1'); await p.press('[data-gs-step="0"]', 'Enter'); await p.fill('[data-gs-step="1"]', 'Week 2');
+    });
+    await tab(p, 'tools'); await p.check('input[name=notif][value=on]');
+    await p.waitForFunction(() => window.__nn.lists.length > 0);
+    let list = await lastList(p);
+    const pick = id => { const x = list.find(r => r.id === id); return x && [x.at, x.title, x.body, x.ch]; };
+    assert.deepEqual(pick('g:2026-11:lead'), ['2026-11-23T09:00', 'Goal date in 1 week: By November 2026', 'Finish the course is at 0%.', 'goal']);
+    assert.deepEqual(pick('g:2026-11:last'), ['2026-11-30T09:00', 'Goal date today: By November 2026', 'Finish the course is at 0%.', 'goal']);
+    assert.deepEqual(pick('w:2026-11-22'), ['2026-11-22T18:00', 'Weekly goal check-in', 'Finish the course 0%.', 'goal']);
+    await p.selectOption('#n-weekday', '2'); await p.fill('#n-weekat', '07:30'); await p.dispatchEvent('#n-weekat', 'change');
+    await p.waitForFunction(() => { const l = window.__nn.lists[window.__nn.lists.length - 1]; return l.some(x => x.id === 'w:2026-11-25'); });
+    list = await lastList(p);
+    assert.equal(list.find(x => x.id === 'w:2026-11-25').at, '2026-11-25T07:30');
+    await p.selectOption('#n-priv', 'never');
+    await p.waitForFunction(() => window.__nn.lists[window.__nn.lists.length - 1].some(x => x.title === 'A goal date is coming up'));
+    list = await lastList(p);
+    assert.ok(!JSON.stringify(list).includes('Finish the course'), 'no goal names when names are never shown');
+    await p.uncheck('#n-goal'); await p.uncheck('#n-week');
+    await p.waitForFunction(() => !window.__nn.lists[window.__nn.lists.length - 1].some(x => x.ch === 'goal'));
+    await ctx.close();
+  });
+
+  await test('home-screen widget gets today and the next two days, and can hide names', async () => {
+    const W = NATIVE_MOCK + "window.NativeApp.setWidget=j=>{(window.__nn.w||(window.__nn.w=[])).push(JSON.parse(j));};";
+    const { ctx, p } = await open({ init: W });
+    await p.waitForFunction(() => window.__nn.w && window.__nn.w.length > 0);
+    const last = () => p.evaluate(() => window.__nn.w[window.__nn.w.length - 1]);
+    let w = await last();
+    assert.deepEqual([w.v, w.names, w.days.map(d => d.d)], [1, true, ['2026-11-20', '2026-11-21', '2026-11-22']]);
+    assert.deepEqual([w.days[0].title, w.days[0].done, w.days[0].total, w.days[0].items.length], ['Friday, Nov 20', 0, 13, 13]);
+    assert.deepEqual(w.days[0].items[0], { t: 'Water, pray, laundry', tm: '6:00 AM', s: 360, e: 375, c: 0 });
+    assert.equal(w.days[1].total, 0);
+    await yogaRow(p).locator('input').check();
+    await p.waitForFunction(() => window.__nn.w[window.__nn.w.length - 1].days[0].done === 1);
+    w = await last(); assert.equal(w.days[0].items.find(x => x.t === 'Yoga').c, 1);
+    await tab(p, 'tools');
+    assert.match(await p.textContent('#w-status'), /touch and hold an empty spot on your home screen/);
+    await p.uncheck('#set-wnames');
+    await p.waitForFunction(() => window.__nn.w[window.__nn.w.length - 1].names === false);
+    w = await last(); assert.deepEqual(w.days[0].items, []);
+    assert.equal(w.days[0].done, 1, 'progress still shows');
+    await ctx.close();
+    const b = await open();
+    await tab(b.p, 'tools');
+    assert.match(await b.p.textContent('#w-status'), /part of the Daily Missions Android app/);
+    assert.equal(await b.p.isDisabled('#set-wnames'), true);
+    await b.ctx.close();
+  });
+
   await test('layout fits phone widths with long names and large text', async () => {
     const { ctx, p } = await open({ viewport: { width: 320, height: 700 } });
     await p.addStyleTag({ content: 'html{font-size:130%}' });
