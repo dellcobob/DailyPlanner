@@ -7,6 +7,7 @@ Daily Missions: a planner for your whole day that runs fully offline on your pho
 | `Daily_Missions_Android.apk` | Android app (Android 8 or newer). Same planner, plus notifications, native save, print, and back button. |
 | `Daily_Missions.html` | The whole planner in one file. Open it in a browser. |
 | `docs/Daily_Missions_User_Guide.pdf` | Step-by-step guide for Android: installing, updating, every screen, notifications, app lock, backups, and troubleshooting. |
+| `docs/Daily_Missions_Change_Log.pdf` | What changed in each version, newest first, with where to find each new feature. |
 
 ## What it does
 
