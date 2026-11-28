@@ -1,0 +1,24 @@
+# Per-USB state, never commit
+Config/settings.json
+Config/tenants.json
+Config/.unblocked
+Config/startup-error.log
+
+# Big or private folders: keep only their README
+Modules/*
+!Modules/README.md
+Runtimes/*
+!Runtimes/README.md
+Reports/*
+!Reports/README.md
+Certs/*
+!Certs/README.md
+
+# Downloaded script libraries are third-party code: keep them on the USB, not in git
+Libraries/*
+!Libraries/README.md
+
+# Audit log and per-client identity rules stay on the USB
+Logs/
+Config/Identity/*
+!Config/Identity/Example.json

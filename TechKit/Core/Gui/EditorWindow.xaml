@@ -1,0 +1,88 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Script editor" Width="1120" Height="800" MinWidth="820" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI" FontSize="13">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="18,12">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button x:Name="BtnCheck" Content="Check syntax"/>
+                    <Button x:Name="BtnExternal" Content="Open in external editor"/>
+                    <Button x:Name="BtnPaste" Content="Paste from clipboard"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnCancel" Content="Cancel" IsCancel="True"/>
+                    <Button x:Name="BtnSave" Content="Save script" Style="{StaticResource AccentButton}" Margin="0" Padding="22,6"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="18,4,18,18">
+                        <TextBlock Text="NAME" Style="{StaticResource SectionLabel}"/>
+                        <TextBox x:Name="TxtName"/>
+
+                        <TextBlock Text="CATEGORY" Style="{StaticResource SectionLabel}"/>
+                        <ComboBox x:Name="CmbCategory"/>
+                        <TextBox x:Name="TxtNewCategory" Margin="0,6,0,0" ToolTip="Type a new category name to create a new folder (leave empty to use the one above)"/>
+                        <TextBlock Text="Type here to create a new category instead." FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,3,0,0"/>
+
+                        <TextBlock Text="LANGUAGE AND FILE NAME" Style="{StaticResource SectionLabel}"/>
+                        <ComboBox x:Name="CmbLanguage"/>
+                        <TextBox x:Name="TxtFile" Margin="0,6,0,0"/>
+
+                        <TextBlock Text="DESCRIPTION" Style="{StaticResource SectionLabel}"/>
+                        <TextBox x:Name="TxtDesc" Height="74" AcceptsReturn="False" TextWrapping="Wrap" VerticalContentAlignment="Top"/>
+
+                        <TextBlock Text="BEHAVIOR" Style="{StaticResource SectionLabel}"/>
+                        <CheckBox x:Name="ChkAdmin" Content="Needs admin rights on the target" Margin="0,0,0,6"/>
+                        <CheckBox x:Name="ChkChanges" Content="Makes changes (confirm before running)" Margin="0,0,0,6"/>
+
+                        <TextBlock Text="WHERE IT RUNS" Style="{StaticResource SectionLabel}"/>
+                        <CheckBox x:Name="ChkLocal" Content="This PC" IsChecked="True" Margin="0,0,0,6"/>
+                        <CheckBox x:Name="ChkRemote" Content="Remote computers (WinRM, or SSH for Bash)"/>
+
+                        <TextBlock Text="MICROSOFT 365 CONNECTIONS" Style="{StaticResource SectionLabel}"/>
+                        <CheckBox x:Name="ChkGraph" Content="Microsoft Graph" Margin="0,0,0,6"/>
+                        <CheckBox x:Name="ChkExchange" Content="Exchange Online" Margin="0,0,0,6"/>
+                        <CheckBox x:Name="ChkCompliance" Content="Security &amp; Compliance"/>
+
+                        <TextBlock Text="GRAPH SCOPES (comma separated)" Style="{StaticResource SectionLabel}"/>
+                        <TextBox x:Name="TxtScopes"/>
+                        <TextBlock Text="MODULES NEEDED (comma separated)" Style="{StaticResource SectionLabel}"/>
+                        <TextBox x:Name="TxtModules"/>
+                        <TextBlock Text="TAGS (comma separated)" Style="{StaticResource SectionLabel}"/>
+                        <TextBox x:Name="TxtTags"/>
+                        <TextBlock Text="AUTHOR / SOURCE" Style="{StaticResource SectionLabel}"/>
+                        <TextBox x:Name="TxtAuthor"/>
+
+                        <StackPanel x:Name="PnlParamLines" Visibility="Collapsed">
+                            <TextBlock Text="INPUTS (one per line)" Style="{StaticResource SectionLabel}"/>
+                            <TextBox x:Name="TxtParamLines" Height="110" AcceptsReturn="True" TextWrapping="NoWrap" VerticalContentAlignment="Top"
+                                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" FontFamily="Consolas"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0"
+                                       Text="Name | type | default | help. Types: string, int, switch, bool, secure, list, choice(a/b/c). Add ! after the type to make it required. Values arrive as --Name value."/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+            <DockPanel Grid.Column="1">
+                <Border DockPanel.Dock="Top" Padding="16,10" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
+                    <TextBlock x:Name="TxtHint" TextWrapping="Wrap" Foreground="{DynamicResource SubTextBrush}" FontSize="12"/>
+                </Border>
+                <Border DockPanel.Dock="Bottom" Padding="16,6" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0">
+                    <TextBlock x:Name="TxtCheck" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SubTextBrush}" Text=" "/>
+                </Border>
+                <TextBox x:Name="TxtBody" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" BorderThickness="0"
+                         VerticalContentAlignment="Top" Padding="12,10" Background="{DynamicResource OutBgBrush}"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" FontFamily="Consolas"/>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

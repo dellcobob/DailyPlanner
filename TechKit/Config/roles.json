@@ -1,0 +1,74 @@
+{
+  "_comment": "Tech Kit roles (Settings > Role). Allow/Deny match 'Category\\Script name', 'Script name' or the file path, with * wildcards. Roles only limit what this Tech Kit shows and runs; scripts always run with the signed-in account's own rights. RequireTicket asks for a ticket or reason before any change. RequireApproval makes a second person sign in (member of Approval.ApproverGroup) before any change. Everything is recorded in Logs\\audit.csv.",
+  "Approval": {
+    "ApproverGroup": "TechKit-Approvers"
+  },
+  "Roles": {
+    "Administrator": {
+      "Description": "Everything, no extra prompts.",
+      "Allow": ["*"],
+      "Deny": [],
+      "AllowChanges": true,
+      "AllowTerminal": true,
+      "AllowEditing": true,
+      "RequireTicket": false,
+      "RequireApproval": false
+    },
+    "Senior Tech": {
+      "Description": "Everything, but every change needs a ticket number or reason.",
+      "Allow": ["*"],
+      "Deny": [],
+      "AllowChanges": true,
+      "AllowTerminal": true,
+      "AllowEditing": true,
+      "RequireTicket": true,
+      "RequireApproval": false
+    },
+    "Helpdesk": {
+      "Description": "Look-ups and everyday fixes. Changes need a ticket. No terminal, no script editing, no offboarding.",
+      "Allow": [
+        "Helpdesk\\*",
+        "Network\\*",
+        "AD User Lookup",
+        "Unlock AD Account",
+        "Reset AD Password",
+        "Group Membership",
+        "Locked-Out Users*",
+        "LAPS Password*",
+        "SID and Name Lookup",
+        "M365 User Lookup",
+        "Reset M365 Password",
+        "User Sign-in Log",
+        "Mailbox Permissions",
+        "Set Out of Office",
+        "Intune Devices*"
+      ],
+      "Deny": ["*Offboard*", "*Disable User*", "*Profile Cleanup*"],
+      "AllowChanges": true,
+      "AllowTerminal": false,
+      "AllowEditing": false,
+      "RequireTicket": true,
+      "RequireApproval": false
+    },
+    "Changes need approval": {
+      "Description": "Everything, but each change needs a ticket and a second person from the approver group.",
+      "Allow": ["*"],
+      "Deny": ["Tech Kit\\*"],
+      "AllowChanges": true,
+      "AllowTerminal": true,
+      "AllowEditing": false,
+      "RequireTicket": true,
+      "RequireApproval": true
+    },
+    "Read-only auditor": {
+      "Description": "Reports and look-ups only. Scripts that make changes are hidden.",
+      "Allow": ["*"],
+      "Deny": ["Tech Kit\\*", "LAPS Password*"],
+      "AllowChanges": false,
+      "AllowTerminal": false,
+      "AllowEditing": false,
+      "RequireTicket": false,
+      "RequireApproval": false
+    }
+  }
+}

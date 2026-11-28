@@ -1,0 +1,13 @@
+{
+  "_comment": "Modules that the Update USB Modules script (Tech Kit category) downloads into the USB Modules folder. Add any PowerShell Gallery module name here.",
+  "Modules": [
+    "Microsoft.Graph.Authentication",
+    "Microsoft.Graph.Users",
+    "Microsoft.Graph.Users.Actions",
+    "Microsoft.Graph.Groups",
+    "Microsoft.Graph.Identity.DirectoryManagement",
+    "Microsoft.Graph.Identity.SignIns",
+    "Microsoft.Graph.Reports",
+    "ExchangeOnlineManagement"
+  ]
+}

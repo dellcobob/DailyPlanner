@@ -1,0 +1,38 @@
+{
+  "Midnight": {
+    "Background": "#1B1D23", "Panel": "#15171C", "Card": "#23262E", "Border": "#343844",
+    "Text": "#E4E6EB", "SubText": "#9AA1AE", "Accent": "#4F9DFF", "AccentText": "#0B0D12",
+    "OutputBackground": "#0F1115", "Output": "#D7DAE0", "Info": "#5CC8E8", "Success": "#6BD28A",
+    "Warning": "#F2C35B", "Error": "#FF6B6B", "Verbose": "#7C8494", "Command": "#B794F6"
+  },
+  "Terminal Green": {
+    "Background": "#0C120E", "Panel": "#080C09", "Card": "#121A14", "Border": "#1F3324",
+    "Text": "#C8F5D2", "SubText": "#6FA67D", "Accent": "#33D17A", "AccentText": "#04110A",
+    "OutputBackground": "#050806", "Output": "#5CF08A", "Info": "#7FE3D2", "Success": "#A3FF7A",
+    "Warning": "#E6E36B", "Error": "#FF5F56", "Verbose": "#3F7A50", "Command": "#9AF7C0"
+  },
+  "Slate": {
+    "Background": "#22272E", "Panel": "#1C2128", "Card": "#2D333B", "Border": "#444C56",
+    "Text": "#ADBAC7", "SubText": "#768390", "Accent": "#39C5BB", "AccentText": "#0D1117",
+    "OutputBackground": "#1C2128", "Output": "#C5D1DE", "Info": "#6CB6FF", "Success": "#57AB5A",
+    "Warning": "#C69026", "Error": "#E5534B", "Verbose": "#636E7B", "Command": "#DCBDFB"
+  },
+  "Ember": {
+    "Background": "#1E1A17", "Panel": "#171411", "Card": "#29231F", "Border": "#3D332C",
+    "Text": "#EDE3D9", "SubText": "#A8998B", "Accent": "#FF8A3D", "AccentText": "#140C06",
+    "OutputBackground": "#120F0D", "Output": "#E8DDD2", "Info": "#7CC4D9", "Success": "#9BCB6C",
+    "Warning": "#F5C451", "Error": "#F0645A", "Verbose": "#85776B", "Command": "#E59CC9"
+  },
+  "High Contrast": {
+    "Background": "#000000", "Panel": "#000000", "Card": "#0A0A0A", "Border": "#FFFFFF",
+    "Text": "#FFFFFF", "SubText": "#D0D0D0", "Accent": "#FFD400", "AccentText": "#000000",
+    "OutputBackground": "#000000", "Output": "#FFFFFF", "Info": "#00E5FF", "Success": "#00FF66",
+    "Warning": "#FFD400", "Error": "#FF4040", "Verbose": "#B0B0B0", "Command": "#FF66FF"
+  },
+  "Daylight": {
+    "Background": "#F4F5F7", "Panel": "#E9EBEF", "Card": "#FFFFFF", "Border": "#CDD2DA",
+    "Text": "#1D2330", "SubText": "#5F6878", "Accent": "#1A6FE0", "AccentText": "#FFFFFF",
+    "OutputBackground": "#FFFFFF", "Output": "#1D2330", "Info": "#0B7FA3", "Success": "#137333",
+    "Warning": "#9A6200", "Error": "#C5221F", "Verbose": "#7A8292", "Command": "#7B3FC4"
+  }
+}
